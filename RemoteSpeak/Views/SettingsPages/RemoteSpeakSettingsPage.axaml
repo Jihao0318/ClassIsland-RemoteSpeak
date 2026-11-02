@@ -105,7 +105,60 @@
                 </StackPanel>
             </fa:SettingsExpander>
 
-            <!-- ===== 出不出声看这两处 ===== -->
+            <!-- ===== 摄像头取景 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE722;}"
+                                 Header="摄像头取景"
+                                 Description="GET /snapshot 抓一帧本机摄像头画面，返回 JPEG。默认关闭。"
+                                 IsExpanded="False">
+                <fa:SettingsExpander.Footer>
+                    <ToggleSwitch IsChecked="{Binding Settings.SnapshotEnabled, Mode=TwoWay}"
+                                  OffContent="已关闭" OnContent="已开启" />
+                </fa:SettingsExpander.Footer>
+
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <TextBlock Text="只监听本机，和播报共用同一个 Token；留空 Token 就等于本机任何程序都能取图。"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="摄像头" Width="116" VerticalAlignment="Center" />
+                        <ComboBox x:Name="DeviceComboBox" Width="300"
+                                  SelectionChanged="DeviceComboBox_OnSelectionChanged" />
+                        <Button Content="重新扫描" Click="ButtonRescanDevices_OnClick" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="出图尺寸" Width="116" VerticalAlignment="Center" />
+                        <ComboBox x:Name="ResolutionComboBox" Width="160"
+                                  SelectionChanged="ResolutionComboBox_OnSelectionChanged" />
+                        <TextBlock Text="摄像头给不了这个尺寸时按等比缩放，不会拉伸"
+                                   FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="试拍一张" Click="ButtonTestSnapshot_OnClick" />
+                        <Button Content="打开所在文件夹" Click="ButtonOpenSnapshotFolder_OnClick" />
+                        <Button Content="删除试拍图" Click="ButtonDeleteSnapshot_OnClick" />
+                    </StackPanel>
+
+                    <TextBlock x:Name="SnapshotResultTextBlock"
+                               VerticalAlignment="Center" TextWrapping="Wrap" FontSize="12" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="· 「试拍一张」走的就是接口那条路：开摄像头、等自动曝光稳定（丢掉前两张偏黑的）、缩放到上面的尺寸、编成 JPEG，约 1.3 秒。"
+                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                        <TextBlock Text="· 以共享方式读取，不会把摄像头从视频会议或直播手里抢走；代价是改不了摄像头正在出的尺寸。"
+                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                        <TextBlock Text="· 接口取走的那张不落盘——JPEG 在内存里编好直接写进 HTTP 响应，拍一百次硬盘上也不会多一个字节。"
+                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                        <TextBlock Text="· 只有「试拍一张」会写文件，固定那一张、每次覆盖（720 档约 227 KB）。不想让学生的脸留在机器上，点「删除试拍图」。"
+                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                        <TextBlock Text="· 开着头像上没有任何提示：不写角标、不加水印，宿主的摄像头指示灯该亮还是会亮。要不要在网页那边标一句「本教室画面已接入」，由调用方决定。"
+                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </fa:SettingsExpander>
+
+            <!-- ===== 没有声音先看这里 ===== -->
             <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE02F;}"
                                  Header="没有声音先看这里"
                                  Description="朗读走的是 ClassIsland 自己的语音引擎，由宿主的两个开关控制。">
@@ -126,34 +179,93 @@
             <!-- ===== 接口 ===== -->
             <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE61C;}"
                                  Header="接口"
-                                 Description="GET /health 探活，POST /speak 播报，OPTIONS 预检已放行。">
-                <StackPanel Spacing="8" Margin="0,8,0,0">
-                    <TextBlock Text="请求体是 JSON，只有一个字段：{ &quot;text&quot;: &quot;要被朗读的文本&quot; }　Content-Type 建议 application/json; charset=utf-8。"
-                               FontSize="12" TextWrapping="Wrap" />
-                    <TextBlock Text="返回码：200 健康检查 · 202 已入队 · 400 文本为空 · 401 Token 不对 · 404 路径不存在 · 405 方法不对 · 413 超过 64 KB · 503 插件启动中 · 500 内部错误。"
-                               FontSize="12" TextWrapping="Wrap" />
-                    <TextBlock Text="新播报会顶掉上一条：旧画面立刻收，念到一半的语音立刻掐，连发多条只有最后一条会念完——不像提醒队列那样一条条排着播。"
+                                 Description="GET /health 探活，POST /speak 播报，GET /snapshot 取景（默认关），OPTIONS 预检已放行。">
+                <StackPanel Spacing="10" Margin="0,8,0,0">
+
+                    <TextBlock Text="四个接口" FontSize="13" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="72,124,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="GET" FontSize="12" Opacity="0.75" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="/health" FontSize="12" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="探活，回 { &quot;ok&quot;: true, &quot;name&quot;: &quot;远程播报&quot; }；不校验 Token"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="POST" FontSize="12" Opacity="0.75" Margin="0,4,0,0" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="/speak" FontSize="12" Margin="0,4,0,0" />
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="播报。body 是 JSON，只有一个字段：{ &quot;text&quot;: &quot;要被朗读的文本&quot; }"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="GET" FontSize="12" Opacity="0.75" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="/snapshot" FontSize="12" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="取景，回一帧 image/jpeg；要先在「摄像头取景」里打开"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="OPTIONS" FontSize="12" Opacity="0.75" Margin="0,12,0,0" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="任意路径" FontSize="12" Margin="0,12,0,0" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="CORS 预检，回 204；已放行所有来源与 X-Token 头"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,12,0,0" />
+                    </Grid>
+
+                    <TextBlock Text="返回码" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <Grid ColumnDefinitions="44,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="200" FontSize="12" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="健康检查通过，或者取景图" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="202" FontSize="12" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="已受理——只代表进了队列，不代表念完了" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="400" FontSize="12" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="text 为空、缺这个字段，或者 body 不是合法 JSON" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="401" FontSize="12" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="Token 不对——上面填了 Token，请求就得带 X-Token 头" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="404" FontSize="12" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="路径不存在，或者取景功能没开" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="405" FontSize="12" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Text="方法不对：/speak 只收 POST，/snapshot 只收 GET" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="413" FontSize="12" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="请求体超过 64 KB" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="503" FontSize="12" />
+                        <TextBlock Grid.Row="7" Grid.Column="1" Text="插件正在启动或停止，或者摄像头拍不出图——error 里写的是具体原因" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="500" FontSize="12" />
+                        <TextBlock Grid.Row="8" Grid.Column="1" Text="内部错误，error 里带异常类型和原文，同时也记进下面的日志" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                    </Grid>
+                    <TextBlock Text="出错时 body 统一是 { &quot;ok&quot;: false, &quot;error&quot;: &quot;原因&quot; }；Content-Type 建议写 application/json; charset=utf-8。"
                                FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-                    <TextBlock Text="代价是打断的范围比预期大：ClassIsland 的语音队列全局只有一条，掐的时候会把宿主或别的插件排队的语音一起清空。反过来，如果这一刻是别的提醒（比如上课提醒）正占着画面，我们的画面排在它后面显示，语音也随它一起延后。"
-                               FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-                    <TextBlock Text="202 只代表这条已经受理，不代表念完了。另外若 设置 → 提醒 里的「启用提醒」总开关是关的，画面会被直接丢弃，但接口照样回 202，不会报错。"
-                               FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+
+                    <TextBlock Text="行为说明" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="· 新播报顶掉上一条：旧画面立刻收，念到一半的语音立刻掐，连发多条只有最后一条会念完。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Text="· 打断的范围比预期大：宿主的语音队列全局只有一条，掐的时候别的插件排队的朗读会一起清空。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Text="· 反过来，如果这一刻是别的提醒（比如上课提醒）正占着画面，本条排在它后面显示，语音随之延后。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Text="· 若 设置 → 提醒 里的「启用提醒」总开关是关的，画面会被直接丢弃，但接口照样回 202，不报错。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Text="· 取景那张图不落盘：JPEG 在内存里编好直接写进响应，调多少次硬盘都不会多一个字节。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Text="· 只监听本机，其他设备连不上；跨网怎么打通由调用方自己处理。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                    </StackPanel>
                 </StackPanel>
             </fa:SettingsExpander>
 
-            <!-- ===== 错误日志 ===== -->
+            <!-- ===== 日志 ===== -->
             <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE7BA;}"
-                                 Header="错误日志"
-                                 Description="只记出错的那一面，最多 100 条，新的在最前面。">
+                                 Header="日志"
+                                 Description="正常请求也记，最多 300 条，新的在最前面。"
+                                 IsExpanded="True">
                 <fa:SettingsExpander.Footer>
                     <TextBlock x:Name="LogCountTextBlock" Opacity="0.7" VerticalAlignment="Center" />
                 </fa:SettingsExpander.Footer>
 
                 <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="记录正常请求" Width="104" VerticalAlignment="Center" />
+                        <ToggleSwitch IsChecked="{Binding Settings.LogRequests, Mode=TwoWay}"
+                                      OffContent="只记错误" OnContent="全部记录" />
+                        <TextBlock Text="关掉就退回只记错误；错误无论如何都留"
+                                   FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </StackPanel>
+
                     <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                             BorderThickness="1" CornerRadius="4" Padding="12,8">
-                        <ScrollViewer Height="240">
+                        <ScrollViewer Height="280">
                             <StackPanel Spacing="4">
                                 <ItemsControl x:Name="LogItemsControl">
                                     <ItemsControl.ItemTemplate>
@@ -162,7 +274,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock x:Name="LogEmptyTextBlock" Text="还没有错误记录。"
+                                <TextBlock x:Name="LogEmptyTextBlock" Text="还没有记录。"
                                            FontSize="12" Opacity="0.6" />
                             </StackPanel>
                         </ScrollViewer>
@@ -176,7 +288,7 @@
 
                     <TextBlock x:Name="LogHintTextBlock"
                                FontSize="12" Opacity="0.6" TextWrapping="Wrap"
-                               Text="画面和朗读是两码事：这里只能记插件自己看得见的——请求被拒、发送提醒时抛的异常、监听中断与重绑失败。EdgeTTS 连不上、429、语音生成超时都发生在宿主的语音服务里，ISpeechService 不会把失败回调给插件，所以得点上面第三个按钮去 ClassIsland 的日志里查。" />
+                               Text="这里记的是插件自己看得见的：每条请求的方法、路径和状态码；播报多带字数和正文前 20 字，取景多带设备、尺寸、大小和耗时；Token 永远不进日志。念没念出声是另一码事——EdgeTTS 连不上、429、语音生成超时都发生在宿主的语音服务里，ISpeechService 不会把失败回调给插件，所以得点上面第三个按钮去 ClassIsland 的日志里查。" />
                 </StackPanel>
             </fa:SettingsExpander>
 

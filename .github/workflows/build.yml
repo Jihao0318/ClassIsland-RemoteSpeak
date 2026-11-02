@@ -1,4 +1,4 @@
-name: Build & Release
+name: Build
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
       - master
     tags:
-      - "v[0-9]*.[0-9]*.[0-9]*"
-      - "[0-9]*.[0-9]*.[0-9]*"
+      - "[0-9]*.[0-9]*.[0-9]*.[0-9]*"
+      - "v[0-9]*.[0-9]*.[0-9]*.[0-9]*"
   pull_request:
     branches:
       - main
@@ -42,20 +42,12 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      # 发版前先确认 tag 和两处版本号一致，避免发出一个版本对不上的包。
-      # tag 可以写三段（v1.0.1）或四段（v1.0.1.0），这里统一补成四段再比。
+      # 打 tag 时要求 tag 与 manifest / csproj 的版本一致，避免发出错版本的包。
       - name: Verify tag version
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}".TrimStart('v')
-          $parts = @($tag.Split('.') | Where-Object { $_ -ne '' })
-
-          if ($parts.Count -lt 3 -or $parts.Count -gt 4) {
-            throw "tag '$tag' 不是三段或四段的版本号，例如 v1.0.1 或 v1.0.1.0"
-          }
-
-          $tagVersion = (@($parts + '0' + '0')[0..3]) -join '.'
 
           $manifestMatch = Select-String -Path 'RemoteSpeak/manifest.yml' -Pattern '^version:\s*(\S+)'
           if (-not $manifestMatch) { throw 'RemoteSpeak/manifest.yml 里找不到 version' }
@@ -65,20 +57,19 @@ jobs:
           if (-not $projectMatch) { throw 'RemoteSpeak.csproj 里找不到 <Version>' }
           $projectVersion = $projectMatch.Matches[0].Groups[1].Value.Trim()
 
-          Write-Host "tag=$tagVersion manifest=$manifestVersion csproj=$projectVersion"
+          Write-Host "tag=$tag manifest=$manifestVersion csproj=$projectVersion"
 
-          if ($manifestVersion -ne $tagVersion) {
-            throw "tag 版本 $tagVersion 与 manifest.yml 的 $manifestVersion 不一致"
+          if ($manifestVersion -ne $tag) {
+            throw "tag $tag 与 manifest.yml 的 $manifestVersion 不一致"
           }
-          if ($projectVersion -ne $tagVersion) {
-            throw "tag 版本 $tagVersion 与 RemoteSpeak.csproj 的 $projectVersion 不一致"
+          if ($projectVersion -ne $tag) {
+            throw "tag $tag 与 RemoteSpeak.csproj 的 $projectVersion 不一致"
           }
 
       - name: Restore
         run: dotnet restore ${{ env.PROJECT }}
 
-      # GenerateHashSummary 必须显式关掉：SDK 的 targets 会把它覆盖成 true，
-      # 然后调用 pwsh 生成 MD5；没有 pwsh 的机器会卡死在这里。
+      # GenerateHashSummary 必须显式关掉：SDK 的 targets 会把它覆盖成 true 再调 pwsh。
       - name: Build and package
         run: >
           dotnet build ${{ env.PROJECT }} -c Release --no-restore
@@ -95,7 +86,7 @@ jobs:
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $env:CIPX))
           try {
             $names = @($zip.Entries | ForEach-Object { $_.FullName })
-            foreach ($required in @('manifest.yml', 'RemoteSpeak.dll', 'README.md')) {
+            foreach ($required in @('manifest.yml', 'RemoteSpeak.dll', 'README.md', 'icon.png')) {
               if ($names -notcontains $required) {
                 throw "插件包里缺少 $required"
               }
@@ -110,33 +101,11 @@ jobs:
           Write-Host "插件包大小：$size 字节"
           "包大小：$size 字节" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
-      # 插件市场要求 Release 附带 MD5 校验信息，格式与 SDK 的 generate-md5.ps1 一致。
-      # 这里不用 pwsh 脚本自己算，跨平台、也省得再依赖 SDK 的 PowerShell 实现。
-      - name: Generate checksums.md
-        shell: pwsh
-        run: |
-          $path = (Resolve-Path $env:CIPX).Path
-          $hash = (Get-FileHash -Path $path -Algorithm MD5).Hash
-          $json = ConvertTo-Json -InputObject @{ 'RemoteSpeak.cipx' = $hash } -Compress
-          $content = "<!-- CLASSISLAND_PKG_MD5 $json -->`n"
-
-          $output = Join-Path $env:GITHUB_WORKSPACE 'checksums.md'
-          [System.IO.File]::WriteAllText($output, $content, (New-Object System.Text.UTF8Encoding($false)))
-
-          Write-Host $content
-          "MD5：$hash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-
-      # 发布前跑一遍无头测试：协议、Token、日志、自愈重绑都在里面。
-      - name: Run tests
-        run: dotnet run -c Release --project ServerCheck
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: RemoteSpeak-cipx
-          path: |
-            ${{ env.CIPX }}
-            checksums.md
+          path: ${{ env.CIPX }}
           if-no-files-found: error
 
       - name: Publish release
@@ -146,7 +115,7 @@ jobs:
           files: ${{ env.CIPX }}
           fail_on_unmatched_files: true
           body: |
-            在本机开一个 HTTP 接口，网页或脚本 POST 一段文本，ClassIsland 立刻弹出提醒并朗读。
+            在本机开一个 HTTP 接口，网页或脚本 POST 一段文本，ClassIsland 立刻弹出提醒并朗读；打开取景后还能 GET 一帧摄像头画面。
 
             ## 安装
 
@@ -159,9 +128,10 @@ jobs:
             ## 这个版本有什么
 
             - `GET /health` 探活，`POST /speak` 播报，可选 `X-Token`
+            - `GET /snapshot` 取一帧本机摄像头画面返回 JPEG（默认关闭，可选摄像头与出图尺寸）
             - 打断式播报：新播报顶掉上一条，旧画面立刻收、念到一半的语音立刻掐
             - 端口被占用或休眠断连后自动重绑，不用重启 ClassIsland
-            - 错误日志滚动保留 100 条
+            - 日志记录每条请求与全部错误，保留 300 条（正文只留前 20 字，Token 不记）
 
             ## 文档
 

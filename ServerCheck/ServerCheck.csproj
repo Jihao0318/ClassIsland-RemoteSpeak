@@ -9,7 +9,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\RemoteSpeak\Services\RemoteSpeakServer.cs" />
-    <Compile Include="..\RemoteSpeak\Services\ErrorLog.cs" />
+    <Compile Include="..\RemoteSpeak\Services\SnapshotFrame.cs" />
+    <Compile Include="..\RemoteSpeak\Services\SnapshotScale.cs" />
+    <Compile Include="..\RemoteSpeak\Services\CallExample.cs" />
+    <Compile Include="..\RemoteSpeak\Services\RequestLog.cs" />
     <Compile Include="..\RemoteSpeak\Models\Settings.cs" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
   </ItemGroup>

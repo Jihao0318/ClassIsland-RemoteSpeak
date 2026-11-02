@@ -50,7 +50,8 @@ await fetch("http://localhost:8765/speak", {
 - **朗读交给宿主**：用 ClassIsland 选定的语音引擎与音色，插件只负责发提醒。
 - **服务自愈**：端口被占或休眠断连，按 1s→15s 退避在后台重绑。
 - **可选 Token**：填了就必须带 `X-Token`；留空表示本机程序都能触发。
-- **错误日志**：只记出错的那一面，滚动保留 100 条。
+- **摄像头取景**：`GET /snapshot` 取一帧当前画面，默认关闭；图只在内存里过一遍，不落盘。
+- **日志**：每条请求都记一行，播报带字数和正文前 20 字，错误永远记，滚动保留 300 条。
 
 ## 安装
 
@@ -73,6 +74,8 @@ await fetch("http://localhost:8765/speak", {
 | 遮罩时长 | `2` 秒 | |
 | 语速 | `4.5` 字/秒 | 只用来估算正文停留时间 |
 | 正文最长 | `120` 秒 | 长文本不会一直占着画面 |
+| 摄像头取景 | 关闭 | 开启后 `GET /snapshot` 回一帧 JPEG；可选摄像头与出图尺寸 |
+| 记录正常请求 | 开启 | 关掉只记错误；日志最多 300 条，Token 永不记录 |
 
 接口、状态码、跨域和调用示例见 [HTTP 接口文档](docs/http-api.md)。
 
@@ -89,7 +92,7 @@ dotnet build RemoteSpeak/RemoteSpeak.csproj -c Release -p:CreateCipx=true -p:Gen
 
 产物：`RemoteSpeak/cipx/RemoteSpeak.cipx`。
 
-推送到 `main` 或发 PR 时 CI 会构建并跑测试；推送 `v1.0.0.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
+推送到 `main` 或发 PR 时 CI 会构建并跑测试；推送 `v1.1.0.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
 
 ## 反馈
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -18,7 +19,10 @@ public sealed class RemoteSpeakServer : IDisposable
     /// <summary>收到文本就交给提醒队列；返回 false 表示插件还没就绪。</summary>
     private readonly Func<string, Task<bool>> _onText;
 
-    private readonly ErrorLog _log;
+    /// <summary>取景回调；没接上时 /snapshot 一律回 503。</summary>
+    private readonly Func<CancellationToken, Task<SnapshotFrame>>? _onSnapshot;
+
+    private readonly RequestLog _log;
 
     private readonly object _sync = new();
 
@@ -27,9 +31,13 @@ public sealed class RemoteSpeakServer : IDisposable
     private int _port;
     private string _token = string.Empty;
     private bool _wantRunning;
+    private bool _snapshotEnabled;
 
-    /// <summary>同一句话反复出现就不再重复记（端口一直被占不该把 100 条日志刷满）。</summary>
+    /// <summary>同一句话反复出现就不再重复记（端口一直被占不该把 300 条日志刷满）。</summary>
     private string _lastIssue = string.Empty;
+
+    /// <summary>上一次记探活的时间：网页轮询时一秒只留一行。</summary>
+    private DateTime _lastHealthLogged = DateTime.MinValue;
 
     /// <summary>
     /// 每次 Start 递增。旧监督循环发现代次变了就直接退出：
@@ -38,10 +46,14 @@ public sealed class RemoteSpeakServer : IDisposable
     /// </summary>
     private int _generation;
 
-    public RemoteSpeakServer(Func<string, Task<bool>> onText, ErrorLog log)
+    public RemoteSpeakServer(
+        Func<string, Task<bool>> onText,
+        RequestLog log,
+        Func<CancellationToken, Task<SnapshotFrame>>? onSnapshot = null)
     {
         _onText = onText;
         _log = log;
+        _onSnapshot = onSnapshot;
     }
 
     /// <summary>正在监听的前缀；没起来时为空。</summary>
@@ -57,7 +69,7 @@ public sealed class RemoteSpeakServer : IDisposable
     /// 按给定端口和 Token 起服务。返回 null 表示当场就绑上了；
     /// 返回失败原因时后台仍会按退避继续重试，直到绑上或者被 <see cref="Stop"/>。
     /// </summary>
-    public string? Start(int port, string token)
+    public string? Start(int port, string token, bool snapshotEnabled = false)
     {
         Stop();
 
@@ -65,6 +77,7 @@ public sealed class RemoteSpeakServer : IDisposable
         {
             _port = port;
             _token = token.Trim();
+            _snapshotEnabled = snapshotEnabled;
             _wantRunning = true;
             _lastIssue = string.Empty;
             // 先当场试一次，设置页好立刻给出成没成；没成也不放弃，交给监督循环。
@@ -99,8 +112,8 @@ public sealed class RemoteSpeakServer : IDisposable
     /// <summary>必须在 <see cref="_sync"/> 内调用。</summary>
     private void BindLocked()
     {
-        // 只绑环回，普通权限就能监听；调用方有的写 localhost 有的写 127.0.0.1，
-        // Host 对不上会被 http.sys 直接拒掉，所以两个都认。
+        // 只绑环回，普通权限就能监听；HttpListener 按前缀里的 Host 逐个匹配，
+        // 而调用方有的写 localhost 有的写 127.0.0.1，所以两种写法都绑上。
         var listener = new HttpListener();
         listener.Prefixes.Add($"http://localhost:{_port}/");
         listener.Prefixes.Add($"http://127.0.0.1:{_port}/");
@@ -300,7 +313,14 @@ public sealed class RemoteSpeakServer : IDisposable
             var path = request.Url?.AbsolutePath ?? "/";
             if (path is "/health" or "/")
             {
+                LogHealth(request, path);
                 await WriteAsync(response, HttpStatusCode.OK, "{\"ok\":true,\"name\":\"远程播报\"}").ConfigureAwait(false);
+                return;
+            }
+
+            if (path == "/snapshot")
+            {
+                await HandleSnapshotAsync(request, response, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -347,6 +367,9 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
+            // 受理成功也留一行，回看才知道网页到底递进来了什么；正文只留前 20 字。
+            // 先记再回响应：真正的成功是提供方接下了，回写只是管道。
+            _log.AddRequest("HTTP 202", $"POST /speak · {text.Length} 字 · {RequestLog.Summarize(text)}");
             await WriteAsync(response, HttpStatusCode.Accepted, "{\"ok\":true}").ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -373,6 +396,86 @@ public sealed class RemoteSpeakServer : IDisposable
             {
             }
         }
+    }
+
+    /// <summary>
+    /// 取景接口：开关没开就等于不存在；开了也要过 Token 这一关。
+    /// 图是一次性的，回 no-store，免得中间层把教室画面存下来。
+    /// </summary>
+    private async Task HandleSnapshotAsync(HttpListenerRequest request, HttpListenerResponse response, CancellationToken cancellationToken)
+    {
+        if (!_snapshotEnabled)
+        {
+            await FailAsync(request, response, HttpStatusCode.NotFound, "取景功能未开启").ConfigureAwait(false);
+            return;
+        }
+
+        if (request.HttpMethod != "GET")
+        {
+            await FailAsync(request, response, HttpStatusCode.MethodNotAllowed, "请用 GET").ConfigureAwait(false);
+            return;
+        }
+
+        if (!IsTokenAccepted(request))
+        {
+            await FailAsync(request, response, HttpStatusCode.Unauthorized, "Token 不对").ConfigureAwait(false);
+            return;
+        }
+
+        if (_onSnapshot == null)
+        {
+            await FailAsync(request, response, HttpStatusCode.ServiceUnavailable, "取景功能不可用").ConfigureAwait(false);
+            return;
+        }
+
+        SnapshotFrame frame;
+        var startedAt = Stopwatch.GetTimestamp();
+        try
+        {
+            frame = await _onSnapshot(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // 改端口、关服务、插件卸载都会走到这里：正在拍的那张被掐了，属于本服务在收摊，
+            // 回 500 只会让人以为取景有 bug。
+            await FailAsync(request, response, HttpStatusCode.ServiceUnavailable, "服务正在停止，稍后再试").ConfigureAwait(false);
+            return;
+        }
+        catch (SnapshotUnavailableException ex)
+        {
+            // 没摄像头、被别的程序占着、系统隐私开关关了——这是设备状态，不是本服务的 bug，
+            // 回 503 并把原因带回去，调用方才看得懂该去开哪个开关。
+            await FailAsync(request, response, HttpStatusCode.ServiceUnavailable, ex.Message).ConfigureAwait(false);
+            return;
+        }
+
+        var seconds = Stopwatch.GetElapsedTime(startedAt, Stopwatch.GetTimestamp()).TotalSeconds;
+        _log.AddRequest("HTTP 200",
+            $"GET /snapshot · {frame.DeviceName} · {frame.Width}×{frame.Height} · {frame.Jpeg.Length / 1024} KB · {seconds:0.0} 秒");
+        response.StatusCode = (int)HttpStatusCode.OK;
+        response.ContentType = "image/jpeg";
+        response.ContentLength64 = frame.Jpeg.Length;
+        response.AddHeader("Cache-Control", "no-store");
+        await response.OutputStream.WriteAsync(frame.Jpeg, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>探活是网页轮询用的，一秒内重复的只留一行，不然列表会被它刷满。</summary>
+    private void LogHealth(HttpListenerRequest request, string path)
+    {
+        if (!_log.LogRequests)
+        {
+            // 不记就别占住这一秒的名额，否则开关刚打开那一下反而被去重吃掉。
+            return;
+        }
+
+        var now = DateTime.Now;
+        if (RequestLog.HealthAlreadyLogged(_lastHealthLogged, now))
+        {
+            return;
+        }
+
+        _lastHealthLogged = now;
+        _log.AddRequest("HTTP 200", $"{request.HttpMethod} {path}");
     }
 
     /// <summary>回错误码的同时记进日志——出错得有个能回头查的地方。</summary>

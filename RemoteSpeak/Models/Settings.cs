@@ -33,6 +33,24 @@ public partial class Settings : ObservableObject
     [ObservableProperty]
     private int _maxSpeechDurationSeconds = 120;
 
+    /// <summary>取景接口总开关。关闭时 /snapshot 这条路由等于不存在。</summary>
+    [ObservableProperty]
+    private bool _snapshotEnabled = false;
+
+    /// <summary>挑中的摄像头设备 ID；留空表示用第一个可用的。</summary>
+    [ObservableProperty]
+    private string _snapshotDeviceId = "";
+
+    /// <summary>出图高度档位，只认 360 / 720 / 1080。</summary>
+    [ObservableProperty]
+    private int _snapshotResolution = 720;
+
+    /// <summary>正常请求要不要也写进日志；关掉就只留错误。</summary>
+    [ObservableProperty]
+    private bool _logRequests = true;
+
+    private static readonly int[] SnapshotResolutions = [360, 720, 1080];
+
     /// <summary>NumberBox 被清空时会被绑成 0，这里挡回去，免得服务起在无效端口上。</summary>
     partial void OnHttpPortChanged(int value)
     {
@@ -67,6 +85,15 @@ public partial class Settings : ObservableObject
         }
     }
 
+    /// <summary>摄像头未必供得起任意尺寸，档位只能在三档里挑。</summary>
+    partial void OnSnapshotResolutionChanged(int value)
+    {
+        if (Array.IndexOf(SnapshotResolutions, value) < 0)
+        {
+            SnapshotResolution = 720;
+        }
+    }
+
     /// <summary>旧版本配置文件里缺字段时补默认值。</summary>
     public void FixUp()
     {
@@ -76,6 +103,8 @@ public partial class Settings : ObservableObject
         WordsPerSecond = WordsPerSecond > 0.5 ? WordsPerSecond : 4.5;
         MaskDurationSeconds = MaskDurationSeconds is >= 1 and <= 30 ? MaskDurationSeconds : 2;
         MaxSpeechDurationSeconds = MaxSpeechDurationSeconds is >= 5 and <= 600 ? MaxSpeechDurationSeconds : 120;
+        SnapshotDeviceId = SnapshotDeviceId?.Trim() ?? "";
+        SnapshotResolution = Array.IndexOf(SnapshotResolutions, SnapshotResolution) >= 0 ? SnapshotResolution : 720;
     }
 
     /// <summary>

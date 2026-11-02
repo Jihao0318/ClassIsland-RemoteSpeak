@@ -11,14 +11,18 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
 {
     private readonly SpeakState _state;
     private readonly Settings _settings;
+    private readonly RequestLog _log;
+    private readonly CameraSnapshotter _camera;
     private readonly RemoteSpeakServer _server;
     private readonly object _sync = new();
 
-    public RemoteSpeakHostService(SpeakState state, Settings settings, ErrorLog log)
+    public RemoteSpeakHostService(SpeakState state, Settings settings, RequestLog log, CameraSnapshotter camera)
     {
         _state = state;
         _settings = settings;
-        _server = new RemoteSpeakServer(Speak, log);
+        _log = log;
+        _camera = camera;
+        _server = new RemoteSpeakServer(Speak, log, Capture);
         // 后台自己恢复（重绑定成功、监听中断）也要反映到设置页，不能只在改设置时更新一次。
         _server.Changed += (_, _) => _state.SetStatus(_server.Address, _server.LastError);
     }
@@ -52,7 +56,15 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
 
     private void OnSettingsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(Settings.HttpServiceEnabled) or nameof(Settings.HttpPort) or nameof(Settings.HttpToken)))
+        if (e.PropertyName == nameof(Settings.LogRequests))
+        {
+            // 记不记正常请求不关监听的事，改完下一条请求就照新值走。
+            _log.LogRequests = _settings.LogRequests;
+            return;
+        }
+
+        if (e.PropertyName is not (nameof(Settings.HttpServiceEnabled) or nameof(Settings.HttpPort) or nameof(Settings.HttpToken)
+                                   or nameof(Settings.SnapshotEnabled)))
         {
             return;
         }
@@ -65,6 +77,7 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
     {
         lock (_sync)
         {
+            _log.LogRequests = _settings.LogRequests;
             string error;
             if (!_settings.HttpServiceEnabled)
             {
@@ -73,14 +86,20 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
             }
             else
             {
-                // 先停再起，端口和 Token 一起按最新值生效。
+                // 先停再起，端口、Token、取景开关一起按最新值生效。
                 _server.Stop();
-                error = _server.Start(_settings.HttpPort, _settings.HttpToken) ?? string.Empty;
+                error = _server.Start(_settings.HttpPort, _settings.HttpToken, _settings.SnapshotEnabled) ?? string.Empty;
             }
 
             _state.SetStatus(_server.Address, error);
         }
     }
+
+    /// <summary>
+    /// 取景参数每次现取，换设备、改分辨率都不用重起监听。
+    /// </summary>
+    private Task<SnapshotFrame> Capture(CancellationToken cancellationToken)
+        => _camera.CaptureAsync(_settings.SnapshotDeviceId, _settings.SnapshotResolution, cancellationToken);
 
     private async Task<bool> Speak(string text)
     {

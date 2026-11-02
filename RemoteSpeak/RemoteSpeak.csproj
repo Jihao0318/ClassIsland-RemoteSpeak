@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- 取景要用 WinRT 的 MediaCapture，而 ClassIsland 宿主自己的平台目标就是这个，
+         它的目录里已经带了 Microsoft.Windows.SDK.NET.dll 和 WinRT.Runtime.dll -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDynamicLoading>true</EnableDynamicLoading>
@@ -9,7 +11,7 @@
     <RootNamespace>RemoteSpeak</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <Version>1.0.0.0</Version>
+    <Version>1.1.0.0</Version>
     <CreateCipx>true</CreateCipx>
     <!-- SDK 的 targets 会把这个属性覆盖成 true 再调用 pwsh 生成 MD5；
          本地和 CI 构建请显式传 -p:GenerateHashSummary=false，光写在这里不生效 -->
@@ -33,6 +35,18 @@
     <None Update="README.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- 宿主 manifest 的 Icon 字段默认就是 icon.png，插件列表和市场都拿它当位图显示；
+         仓库根的 Icon.svg 是矢量源，宿主的 Image 控件不认 SVG，所以这里要一份光栅化结果 -->
+    <None Update="icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
+
+  <!-- 宿主的 PluginLoadContext 对 WinRT.Runtime / Microsoft.Windows.SDK.NET 故意 return null，
+       插件绑的就是宿主目录里那两份；跟着打包会让 .cipx 从 32 KB 涨到 6 MB。
+       注意这只有装进宿主时才成立：单独跑 ServerCheck 或调试用宿主之外的加载器会缺这两份。 -->
+  <Target Name="StripWinRTProjection" BeforeTargets="CreateCipx">
+    <Delete Files="$(OutputPath)Microsoft.Windows.SDK.NET.dll;$(OutputPath)WinRT.Runtime.dll" />
+  </Target>
 
 </Project>

@@ -23,8 +23,8 @@ public class Plugin : PluginBase
     /// <summary>设置文件的绝对路径，设置页的「打开配置文件夹」要用。</summary>
     public string ConfigPath { get; private set; } = "";
 
-    /// <summary>错误日志文件的绝对路径，和设置文件放一起。</summary>
-    public string ErrorLogPath { get; private set; } = "";
+    /// <summary>日志文件的绝对路径，和设置文件放一起（文件名沿用 error.log）。</summary>
+    public string LogPath { get; private set; } = "";
 
     public override void Initialize(HostBuilderContext context, IServiceCollection services)
     {
@@ -33,12 +33,13 @@ public class Plugin : PluginBase
         Settings.FixUp();
         Settings.PropertyChanged += (_, _) => ConfigureFileHelper.SaveConfig(ConfigPath, Settings);
 
-        ErrorLogPath = Path.Combine(PluginConfigFolder, "error.log");
-        var errorLog = new ErrorLog(ErrorLogPath);
-        errorLog.Load();
+        LogPath = Path.Combine(PluginConfigFolder, "error.log");
+        var log = new RequestLog(LogPath);
+        log.Load();
 
         services.AddSingleton(Settings);
-        services.AddSingleton(errorLog);
+        services.AddSingleton(log);
+        services.AddSingleton<CameraSnapshotter>();
         // 提醒提供方只注册为 IHostedService，具体类型拿不到，用这个单例把实例递出来。
         services.AddSingleton<SpeakState>();
 

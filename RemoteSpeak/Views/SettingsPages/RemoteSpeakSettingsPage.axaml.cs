@@ -23,7 +23,7 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
 {
     private SpeakState State => IAppHost.GetService<SpeakState>();
 
-    private ErrorLog Log => IAppHost.GetService<ErrorLog>();
+    private RequestLog Log => IAppHost.GetService<RequestLog>();
 
     public Settings Settings => IAppHost.GetService<Plugin>().Settings;
 
@@ -44,6 +44,8 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
         Log.Changed += OnLogChanged;
         RefreshStatus();
         RefreshLog();
+        RefreshCameraOptions();
+        _ = LoadDevicesAsync();
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
@@ -99,6 +101,145 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
 
     private void ButtonClearLog_OnClick(object? sender, RoutedEventArgs e) => Log.Clear();
 
+    private static readonly (string Label, int Height)[] Resolutions =
+    [
+        ("640×360", 360),
+        ("1280×720", 720),
+        ("1920×1080", 1080)
+    ];
+
+    private record DeviceOption(string Id, string Label);
+
+    /// <summary>填控件时不要顺手把设置改回去。</summary>
+    private bool _loadingCameraOptions;
+
+    private CameraSnapshotter Camera => IAppHost.GetService<CameraSnapshotter>();
+
+    private void RefreshCameraOptions()
+    {
+        _loadingCameraOptions = true;
+        ResolutionComboBox.ItemsSource = Resolutions.Select(r => r.Label).ToList();
+        ResolutionComboBox.SelectedIndex = Math.Max(Array.FindIndex(Resolutions, r => r.Height == Settings.SnapshotResolution), 0);
+        _loadingCameraOptions = false;
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        _loadingCameraOptions = true;
+        try
+        {
+            var devices = await Camera.ListDevicesAsync(CancellationToken.None);
+            var options = new List<DeviceOption>
+            {
+                new("", devices.Any(d => d.IsDefault)
+                    ? $"自动（系统默认：{devices.First(d => d.IsDefault).DisplayName}）"
+                    : "自动（列表里第一台）")
+            };
+            options.AddRange(devices.Select(d => new DeviceOption(d.Id, d.IsDefault ? $"{d.DisplayName}（系统默认）" : d.DisplayName)));
+            DeviceComboBox.ItemsSource = options;
+            var picked = options.FindIndex(o => o.Id == Settings.SnapshotDeviceId);
+            if (picked < 0)
+            {
+                // 记住的那台不在了（拔了、换口了）：下拉框显示「自动」，设置就得真的写回自动。
+                Settings.SnapshotDeviceId = "";
+            }
+
+            DeviceComboBox.SelectedIndex = Math.Max(picked, 0);
+        }
+        catch (Exception ex)
+        {
+            // 枚举本身就能失败（系统关了相机权限），下拉框得说一句人话。
+            DeviceComboBox.ItemsSource = new List<DeviceOption> { new("", "没扫到摄像头") };
+            DeviceComboBox.SelectedIndex = 0;
+            SnapshotResultTextBlock.Text = $"扫描摄像头失败：{ex.Message}";
+        }
+        finally
+        {
+            _loadingCameraOptions = false;
+        }
+    }
+
+    private void DeviceComboBox_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingCameraOptions)
+        {
+            return;
+        }
+
+        if (DeviceComboBox.SelectedItem is DeviceOption option)
+        {
+            Settings.SnapshotDeviceId = option.Id;
+        }
+    }
+
+    private void ResolutionComboBox_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingCameraOptions)
+        {
+            return;
+        }
+
+        var index = ResolutionComboBox.SelectedIndex;
+        if (index is >= 0 and < 3)
+        {
+            Settings.SnapshotResolution = Resolutions[index].Height;
+        }
+    }
+
+    private void ButtonRescanDevices_OnClick(object? sender, RoutedEventArgs e) => _ = LoadDevicesAsync();
+
+    /// <summary>试拍图固定就那一张，每次覆盖：磁盘上不会堆图片。</summary>
+    private static string PreviewPath => Path.Combine(Path.GetTempPath(), "RemoteSpeak 试拍.jpg");
+
+    private async void ButtonTestSnapshot_OnClick(object? sender, RoutedEventArgs e)
+    {
+        SnapshotResultTextBlock.Text = "正在取景…";
+        try
+        {
+            var frame = await Camera.CaptureAsync(Settings.SnapshotDeviceId, Settings.SnapshotResolution, CancellationToken.None);
+            try
+            {
+                File.WriteAllBytes(PreviewPath, frame.Jpeg);
+            }
+            catch (IOException)
+            {
+                // 图已经拍到了，只是默认查看器还占着那个文件名。
+                SnapshotResultTextBlock.Text = $"已拍到 {frame.Width}×{frame.Height}，但那张 {PreviewPath} 正被其他程序占着写不进去——关掉查看器再试。";
+                return;
+            }
+
+            SnapshotResultTextBlock.Text =
+                $"{frame.DeviceName} · {frame.Width}×{frame.Height} · {frame.Jpeg.Length / 1024} KB　已存到临时目录，正在打开";
+            Open(PreviewPath);
+        }
+        catch (Exception ex)
+        {
+            SnapshotResultTextBlock.Text = $"拍不出来：{ex.Message}";
+        }
+    }
+
+    private void ButtonOpenSnapshotFolder_OnClick(object? sender, RoutedEventArgs e) =>
+        Open(Path.GetDirectoryName(PreviewPath) ?? PreviewPath);
+
+    private void ButtonDeleteSnapshot_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (!File.Exists(PreviewPath))
+        {
+            SnapshotResultTextBlock.Text = "没有试拍图要删。";
+            return;
+        }
+
+        try
+        {
+            File.Delete(PreviewPath);
+            SnapshotResultTextBlock.Text = "已删除试拍图。";
+        }
+        catch (IOException)
+        {
+            SnapshotResultTextBlock.Text = "删不掉——图片还在查看器里开着，关掉它再点一次。";
+        }
+    }
+
     private void ButtonOpenLog_OnClick(object? sender, RoutedEventArgs e)
     {
         // 还没出过错就没有这个文件，那时打开它所在的文件夹。
@@ -129,31 +270,6 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
             return;
         }
 
-        await clipboard.SetTextAsync(BuildExampleText());
-    }
-
-    private string BuildExampleText()
-    {
-        var port = Settings.HttpPort;
-        var token = Settings.HttpToken;
-        var tokenHeader = token.Length == 0
-            ? ""
-            : $"\n    \"X-Token\": \"{token}\",";
-
-        return
-            $$"""
-             // 1. 确认插件在跑
-             await fetch("http://localhost:{{port}}/health").then(r => r.ok);
-
-             // 2. 触发播报
-             await fetch("http://localhost:{{port}}/speak", {
-               method: "POST",
-               headers: {
-                 "Content-Type": "application/json; charset=utf-8",{{tokenHeader}}
-               },
-               body: JSON.stringify({ text: "这段话会被念出来" })
-             });
-             // 202 只代表已受理。新的播报会顶掉上一条：画面立刻收，念到一半的语音立刻掐。
-             """;
+        await clipboard.SetTextAsync(CallExample.Build(Settings.HttpPort, Settings.HttpToken, Settings.SnapshotEnabled));
     }
 }
