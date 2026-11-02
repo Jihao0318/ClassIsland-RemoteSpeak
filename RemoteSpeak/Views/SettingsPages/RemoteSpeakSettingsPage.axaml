@@ -1,0 +1,192 @@
+<ci:SettingsPageBase
+    x:Class="RemoteSpeak.Views.SettingsPages.RemoteSpeakSettingsPage"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ci="http://classisland.tech/schemas/xaml/core"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+    xmlns:local="clr-namespace:RemoteSpeak.Views.SettingsPages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance local:RemoteSpeakSettingsPage}"
+    d:DesignHeight="1200"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+
+    <ScrollViewer>
+        <StackPanel Classes="settings-container animated-intro">
+
+            <!-- ===== HTTP 服务 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE4D0;}"
+                                 Header="HTTP 服务"
+                                 Description="网页往本机端口 POST 文本，插件立刻播报。"
+                                 IsExpanded="True">
+                <fa:SettingsExpander.Footer>
+                    <ToggleSwitch IsChecked="{Binding Settings.HttpServiceEnabled, Mode=TwoWay}"
+                                  OffContent="已关闭" OnContent="运行中" />
+                </fa:SettingsExpander.Footer>
+
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <TextBlock Text="只监听本机（localhost 与 127.0.0.1），其他设备连不上；网络怎么打通由调用方自己处理。关闭时完全不监听任何端口。开着的时候服务会自己保活：端口一时被别的程序占着、或者休眠唤醒后监听断了，都会按 1 秒到 15 秒的退避在后台自动重绑，占用方一让开就恢复，不用重启 ClassIsland。"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="端口" Width="72" VerticalAlignment="Center" />
+                        <fa:NumberBox x:Name="PortBox"
+                                      Width="160"
+                                      Minimum="1" Maximum="65535"
+                                      SmallChange="1" LargeChange="10"
+                                      SpinButtonPlacementMode="Inline"
+                                      Value="{Binding Settings.HttpPort, Mode=TwoWay}" />
+                        <TextBlock Text="默认 8765，被占用时换一个"
+                                   FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="访问 Token" Width="72" VerticalAlignment="Center" />
+                        <TextBox Width="260"
+                                 Text="{Binding Settings.HttpToken, Mode=TwoWay}"
+                                 Watermark="留空则不校验" />
+                        <Button Content="生成" Click="ButtonGenerateToken_OnClick" />
+                        <Button Content="清空" Click="ButtonClearToken_OnClick" />
+                    </StackPanel>
+                    <TextBlock Text="填了 Token 之后，请求必须带 X-Token 请求头；留空表示任何本机程序都能触发朗读。"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+
+                    <Separator Margin="0,4" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="状态" Width="72" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusTextBlock" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="ErrorTextBlock"
+                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap" IsVisible="False" />
+
+                    <Button Content="复制调用示例" Click="ButtonCopyExample_OnClick"
+                            HorizontalAlignment="Left" />
+                </StackPanel>
+            </fa:SettingsExpander>
+
+            <!-- ===== 画面与朗读 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xED53;}"
+                                 Header="画面与朗读"
+                                 Description="一条播报分两段：先弹遮罩，再显示正文，朗读念的是正文。正文静止一行显示，不滚动。">
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="遮罩文字" Width="116" VerticalAlignment="Center" />
+                        <TextBox Width="240" Text="{Binding Settings.MaskText, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="遮罩时长（秒）" Width="116" VerticalAlignment="Center" />
+                        <fa:NumberBox Width="140" Minimum="1" Maximum="30" SmallChange="1"
+                                      SpinButtonPlacementMode="Inline"
+                                      Value="{Binding Settings.MaskDurationSeconds, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="语速（字/秒）" Width="116" VerticalAlignment="Center" />
+                        <fa:NumberBox Width="140" Minimum="1" Maximum="12" SmallChange="0.5"
+                                      SpinButtonPlacementMode="Inline"
+                                      Value="{Binding Settings.WordsPerSecond, Mode=TwoWay}" />
+                        <TextBlock Text="只用来估算念完要多久"
+                                   FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="正文最长（秒）" Width="116" VerticalAlignment="Center" />
+                        <fa:NumberBox Width="140" Minimum="5" Maximum="600" SmallChange="5"
+                                      SpinButtonPlacementMode="Inline"
+                                      Value="{Binding Settings.MaxSpeechDurationSeconds, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <TextBlock Text="正文是静止的一行，不滚动：字比画面宽就只显示得下的一部分，末尾收成省略号，但会整句念完。停留时间按「字数 ÷ 语速 + 2 秒」估，再套上面的最长时间——画面一收宿主就清空语音队列，所以估短了会把句子截断，宁可放宽。"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                </StackPanel>
+            </fa:SettingsExpander>
+
+            <!-- ===== 出不出声看这两处 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE02F;}"
+                                 Header="没有声音先看这里"
+                                 Description="朗读走的是 ClassIsland 自己的语音引擎，由宿主的两个开关控制。">
+                <StackPanel Spacing="8" Margin="0,8,0,0">
+                    <fa:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                                Message="ClassIsland 出厂时就把「启用提醒语音」关着，不开只有画面、没有声音。" />
+                    <TextBlock Text="① 设置 → 提醒 → 启用提醒语音：总开关，必须先打开。"
+                               FontSize="13" TextWrapping="Wrap" />
+                    <TextBlock Text="② 设置 → 提醒 → 提醒管理 → 远程播报：如果在这里打开了「对此提醒来源启用特殊高级设置」，那么它以本条自己的「启用提醒语音」为准，而这个子开关默认是关的——开了高级设置却没勾它，这条播报同样没声音。不需要差异化就用全局开关，别开高级设置。"
+                               FontSize="13" TextWrapping="Wrap" />
+                    <TextBlock Text="③ 播报内容本身：遮罩段不发声，正文段发声，避免同一句话念两遍。"
+                               FontSize="13" TextWrapping="Wrap" />
+                    <TextBlock Text="念出来用的是宿主里选定的语音引擎和音色，本插件不再自带朗读通道。"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                </StackPanel>
+            </fa:SettingsExpander>
+
+            <!-- ===== 接口 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE61C;}"
+                                 Header="接口"
+                                 Description="GET /health 探活，POST /speak 播报，OPTIONS 预检已放行。">
+                <StackPanel Spacing="8" Margin="0,8,0,0">
+                    <TextBlock Text="请求体是 JSON，只有一个字段：{ &quot;text&quot;: &quot;要被朗读的文本&quot; }　Content-Type 建议 application/json; charset=utf-8。"
+                               FontSize="12" TextWrapping="Wrap" />
+                    <TextBlock Text="返回码：200 健康检查 · 202 已入队 · 400 文本为空 · 401 Token 不对 · 404 路径不存在 · 405 方法不对 · 413 超过 64 KB · 503 插件启动中 · 500 内部错误。"
+                               FontSize="12" TextWrapping="Wrap" />
+                    <TextBlock Text="新播报会顶掉上一条：旧画面立刻收，念到一半的语音立刻掐，连发多条只有最后一条会念完——不像提醒队列那样一条条排着播。"
+                               FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                    <TextBlock Text="代价是打断的范围比预期大：ClassIsland 的语音队列全局只有一条，掐的时候会把宿主或别的插件排队的语音一起清空。反过来，如果这一刻是别的提醒（比如上课提醒）正占着画面，我们的画面排在它后面显示，语音也随它一起延后。"
+                               FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                    <TextBlock Text="202 只代表这条已经受理，不代表念完了。另外若 设置 → 提醒 里的「启用提醒」总开关是关的，画面会被直接丢弃，但接口照样回 202，不会报错。"
+                               FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                </StackPanel>
+            </fa:SettingsExpander>
+
+            <!-- ===== 错误日志 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE7BA;}"
+                                 Header="错误日志"
+                                 Description="只记出错的那一面，最多 100 条，新的在最前面。">
+                <fa:SettingsExpander.Footer>
+                    <TextBlock x:Name="LogCountTextBlock" Opacity="0.7" VerticalAlignment="Center" />
+                </fa:SettingsExpander.Footer>
+
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="4" Padding="12,8">
+                        <ScrollViewer Height="240">
+                            <StackPanel Spacing="4">
+                                <ItemsControl x:Name="LogItemsControl">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Display}" FontSize="12" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock x:Name="LogEmptyTextBlock" Text="还没有错误记录。"
+                                           FontSize="12" Opacity="0.6" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="清空日志" Click="ButtonClearLog_OnClick" />
+                        <Button Content="打开日志文件" Click="ButtonOpenLog_OnClick" />
+                        <Button Content="打开 ClassIsland 日志目录" Click="ButtonOpenHostLogs_OnClick" />
+                    </StackPanel>
+
+                    <TextBlock x:Name="LogHintTextBlock"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                               Text="画面和朗读是两码事：这里只能记插件自己看得见的——请求被拒、发送提醒时抛的异常、监听中断与重绑失败。EdgeTTS 连不上、429、语音生成超时都发生在宿主的语音服务里，ISpeechService 不会把失败回调给插件，所以得点上面第三个按钮去 ClassIsland 的日志里查。" />
+                </StackPanel>
+            </fa:SettingsExpander>
+
+            <!-- ===== 关于 ===== -->
+            <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE0C1;}"
+                                 Header="关于远程播报">
+                <TextBlock Text="{Binding AboutText}"
+                           Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
+            </fa:SettingsExpander>
+
+        </StackPanel>
+    </ScrollViewer>
+</ci:SettingsPageBase>

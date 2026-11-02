@@ -1,0 +1,7 @@
+id: seewo.remotespeak
+name: 远程播报
+description: 在本机开一个 HTTP 接口，网页 POST 文本就让 ClassIsland 弹出通知并朗读。
+entranceAssembly: "RemoteSpeak.dll"
+apiVersion: 2.0.0.0
+version: 1.0.0.0
+author: seewo

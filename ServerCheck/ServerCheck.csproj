@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ServerCheck</AssemblyName>
+    <RootNamespace>ServerCheck</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\RemoteSpeak\Services\RemoteSpeakServer.cs" />
+    <Compile Include="..\RemoteSpeak\Services\ErrorLog.cs" />
+    <Compile Include="..\RemoteSpeak\Models\Settings.cs" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+  </ItemGroup>
+</Project>

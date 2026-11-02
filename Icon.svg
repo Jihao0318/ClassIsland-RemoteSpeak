@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="RemoteSpeak">
+  <rect width="128" height="128" rx="28" fill="#0F172A"/>
+  <path d="M32 52h12l20-16v56L44 76H32z" fill="#E5E7EB"/>
+  <path d="M81 47a24 24 0 0 1 0 34" stroke="#60A5FA" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M92 36a36 36 0 0 1 0 56" stroke="#3B82F6" stroke-width="7" stroke-linecap="round" fill="none"/>
+</svg>
