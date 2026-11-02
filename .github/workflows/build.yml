@@ -113,30 +113,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.CIPX }}
+          generate_release_notes: true
           fail_on_unmatched_files: true
-          body: |
-            在本机开一个 HTTP 接口，网页或脚本 POST 一段文本，ClassIsland 立刻弹出提醒并朗读；打开取景后还能 GET 一帧摄像头画面。
-
-            ## 安装
-
-            1. 下载 `RemoteSpeak.cipx`
-            2. 打开 ClassIsland → **设置 → 插件 → 从本地文件安装**，选择该文件
-            3. 重启 ClassIsland
-            4. **设置 → 提醒 → 启用提醒语音**（默认关着，不开只有画面）
-            5. **设置 → 外部设置 → 远程播报**，打开 HTTP 服务
-
-            ## 这个版本有什么
-
-            - `GET /health` 探活，`POST /speak` 播报，可选 `X-Token`
-            - `GET /snapshot` 取一帧本机摄像头画面返回 JPEG（默认关闭，可选摄像头与出图尺寸）
-            - 打断式播报：新播报顶掉上一条，旧画面立刻收、念到一半的语音立刻掐
-            - 端口被占用或休眠断连后自动重绑，不用重启 ClassIsland
-            - 日志记录每条请求与全部错误，保留 300 条（正文只留前 20 字，Token 不记）
-
-            ## 文档
-
-            - [HTTP 接口](${{ github.server_url }}/${{ github.repository }}/blob/main/docs/http-api.md)
-            - [排障说明](${{ github.server_url }}/${{ github.repository }}/blob/main/docs/troubleshooting.md)
-            - [开发说明](${{ github.server_url }}/${{ github.repository }}/blob/main/docs/development.md)
-
-            需要 ClassIsland 2.1+，只支持 Windows。
