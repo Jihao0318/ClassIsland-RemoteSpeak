@@ -47,6 +47,7 @@ import com.remotebroadcast.ui.screen.status.ServerStatusUiState
 import com.remotebroadcast.ui.theme.LocalEnableBlur
 import com.remotebroadcast.ui.util.BlurredBar
 import com.remotebroadcast.ui.util.rememberBlurBackdrop
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -111,6 +112,16 @@ fun HomePagerMiuix(
                             version = state.systemInfo.appVersion,
                             onClick = actions.onServerStatusRefresh,
                         )
+                        Button(
+                            onClick = actions.onGoBroadcast,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.home_go_broadcast),
+                                fontSize = MiuixTheme.textStyles.button.fontSize,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                         ServerStatusDetails(serverStatus)
                         InfoCard(systemInfo = state.systemInfo)
                     }

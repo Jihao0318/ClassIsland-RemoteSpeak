@@ -1,3 +1,3 @@
 package com.remotebroadcast.ui.component
 
-enum class WarningLevel { Error, Notice }
+enum class WarningLevel { Error, Notice, Success }

@@ -32,6 +32,20 @@ class MainPagerState(
 
     private var navJob: Job? = null
 
+    /** 首页点「去喊话」时置位，播报页切过去后自己取走并聚焦输入框。 */
+    var broadcastFocusRequested by mutableStateOf(false)
+        private set
+
+    fun requestBroadcastFocus() {
+        broadcastFocusRequested = true
+    }
+
+    fun consumeBroadcastFocus(): Boolean {
+        if (!broadcastFocusRequested) return false
+        broadcastFocusRequested = false
+        return true
+    }
+
     fun animateToPage(targetIndex: Int) {
         if (targetIndex == selectedPage) return
 

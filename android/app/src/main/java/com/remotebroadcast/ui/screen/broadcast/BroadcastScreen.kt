@@ -2,16 +2,19 @@ package com.remotebroadcast.ui.screen.broadcast
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import com.remotebroadcast.data.remote.BroadcastApi
+import com.remotebroadcast.ui.component.bottombar.LocalMainPagerState
 import com.remotebroadcast.ui.viewmodel.BroadcastViewModel
 
 @Composable
@@ -22,9 +25,18 @@ fun BroadcastPager(
     val viewModel = viewModel<BroadcastViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showFullView by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val mainPagerState = LocalMainPagerState.current
 
     LaunchedEffect(isCurrentPage) {
-        if (isCurrentPage) viewModel.refresh()
+        if (isCurrentPage) {
+            viewModel.refresh()
+            if (mainPagerState.consumeBroadcastFocus()) {
+                // 等页面组合完成再要焦点，否则 requestFocus 会打在空树上。
+                delay(150)
+                focusRequester.requestFocus()
+            }
+        }
     }
 
     LaunchedEffect(uiState.autoRefreshSnapshot, isCurrentPage, uiState.setupDone) {
@@ -46,7 +58,7 @@ fun BroadcastPager(
         onOpenFullView = { if (uiState.snapshot != null) showFullView = true },
     )
 
-    BroadcastPagerMiuix(uiState, actions, bottomInnerPadding)
+    BroadcastPagerMiuix(uiState, actions, bottomInnerPadding, focusRequester)
 
     val frame = uiState.snapshot
     if (showFullView && frame != null) {

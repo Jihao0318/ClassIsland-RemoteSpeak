@@ -17,5 +17,6 @@ data class HomeUiState(
 @Immutable
 data class HomeActions(
     val onServerStatusRefresh: () -> Unit,
+    val onGoBroadcast: () -> Unit,
     val onOpenUrl: (String) -> Unit,
 )

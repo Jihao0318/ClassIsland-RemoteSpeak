@@ -20,6 +20,7 @@ enum class BroadcastTriggerMode(val value: Int) {
 
 sealed interface SendStatus {
     data object Idle : SendStatus
+    data object Empty : SendStatus
     data object Sending : SendStatus
     data class Sent(val repeat: Int) : SendStatus
     data class Rejected(val failure: BroadcastFailure, val serverMessage: String?) : SendStatus

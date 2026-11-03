@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.remotebroadcast.ui.component.bottombar.LocalMainPagerState
 import com.remotebroadcast.ui.navigation3.Navigator
 import com.remotebroadcast.ui.viewmodel.HomeViewModel
 import com.remotebroadcast.ui.viewmodel.ServerStatusViewModel
@@ -46,8 +47,13 @@ fun HomePager(
         onPauseOrDispose { }
     }
 
+    val mainPagerState = LocalMainPagerState.current
     val actions = HomeActions(
         onServerStatusRefresh = { statusViewModel.check(showBusy = true) },
+        onGoBroadcast = {
+            mainPagerState.requestBroadcastFocus()
+            mainPagerState.animateToPage(1)
+        },
         onOpenUrl = uriHandler::openUri,
     )
 

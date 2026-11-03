@@ -61,14 +61,17 @@ private fun WarningLevel.containerColor(): Color = when {
     isDynamicColor -> when (this) {
         WarningLevel.Error -> colorScheme.errorContainer
         WarningLevel.Notice -> colorScheme.tertiaryContainer
+        WarningLevel.Success -> colorScheme.secondaryContainer
     }
     isInDarkTheme() -> when (this) {
         WarningLevel.Error -> Color(0xFF310808)
         WarningLevel.Notice -> Color(0xFF3E2F1B)
+        WarningLevel.Success -> Color(0xFF12381C)
     }
     else -> when (this) {
         WarningLevel.Error -> Color(0xFFF8E2E2)
         WarningLevel.Notice -> Color(0xFFFFF0DB)
+        WarningLevel.Success -> Color(0xFFDFFAE4)
     }
 }
 
@@ -77,9 +80,11 @@ private fun WarningLevel.contentColor(): Color = when {
     isDynamicColor -> when (this) {
         WarningLevel.Error -> colorScheme.onErrorContainer
         WarningLevel.Notice -> colorScheme.onTertiaryContainer
+        WarningLevel.Success -> colorScheme.onSecondaryContainer
     }
     else -> when (this) {
         WarningLevel.Error -> Color(0xFFF72727)
         WarningLevel.Notice -> Color(0xFFF5A623)
+        WarningLevel.Success -> Color(0xFF2E9E4F)
     }
 }

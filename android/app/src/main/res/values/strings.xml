@@ -70,7 +70,7 @@
     <string name="broadcast_repeat_times">×%1$d</string>
     <string name="broadcast_send">Broadcast</string>
     <string name="broadcast_sending">Sending…</string>
-    <string name="broadcast_sent">Accepted (×%1$d)</string>
+    <string name="broadcast_sent">Playing now</string>
     <string name="broadcast_confirm_title">Announce this now?</string>
     <string name="broadcast_interrupt_note">A new announcement replaces the one in progress</string>
     <string name="broadcast_long_press_hint">Hold the button to send</string>
@@ -104,6 +104,10 @@
     <string name="guide_has_token_summary">Opens an editor for the access token</string>
     <string name="guide_no_token">No token is configured</string>
     <string name="guide_no_token_summary">Requests are sent without a token header</string>
+    <string name="broadcast_empty">Type something to broadcast first</string>
+    <string name="broadcast_snapshot_refresh_again">Refresh</string>
+    <string name="broadcast_edit_full">Full-screen editor</string>
+    <string name="home_go_broadcast">Go to broadcast</string>
     <string name="broadcast_input_hint">Type what to read out</string>
     <string name="broadcast_input_label">Message</string>
     <string name="broadcast_url_unset">Not set</string>

@@ -69,7 +69,7 @@
     <string name="broadcast_repeat_times">念 %1$d 遍</string>
     <string name="broadcast_send">播报</string>
     <string name="broadcast_sending">正在发送…</string>
-    <string name="broadcast_sent">已受理，念 %1$d 遍</string>
+    <string name="broadcast_sent">已开始播放</string>
     <string name="broadcast_confirm_title">现在播报这条内容？</string>
     <string name="broadcast_interrupt_note">新播报会顶掉正在播的那条</string>
     <string name="broadcast_long_press_hint">按住按钮才会发送</string>
@@ -103,6 +103,10 @@
     <string name="guide_has_token_summary">弹窗里输入访问 Token</string>
     <string name="guide_no_token">没配置，直接开始</string>
     <string name="guide_no_token_summary">发送时不带 Token 请求头</string>
+    <string name="broadcast_empty">还没输入要播报的内容</string>
+    <string name="broadcast_snapshot_refresh_again">刷新</string>
+    <string name="broadcast_edit_full">全屏编辑</string>
+    <string name="home_go_broadcast">去喊话</string>
     <string name="broadcast_input_hint">输入要念的话</string>
     <string name="broadcast_input_label">播报内容</string>
     <string name="broadcast_url_unset">还没设置</string>

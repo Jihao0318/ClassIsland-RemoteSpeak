@@ -1,7 +1,9 @@
 package com.remotebroadcast.ui.screen.broadcast
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -18,8 +20,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Fullscreen
@@ -37,15 +41,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import com.remotebroadcast.R
 import com.remotebroadcast.data.remote.BroadcastApi
@@ -60,6 +70,7 @@ import com.remotebroadcast.ui.util.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
@@ -82,6 +93,7 @@ fun BroadcastPagerMiuix(
     state: BroadcastUiState,
     actions: BroadcastActions,
     bottomInnerPadding: Dp,
+    focusRequester: FocusRequester,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val enableBlur = LocalEnableBlur.current
@@ -121,15 +133,16 @@ fun BroadcastPagerMiuix(
                         if (state.showGuide) {
                             GuideBlock(state, actions)
                         } else {
+                            SendStatusBanner(state.sendStatus)
                             if (state.baseUrl.isBlank()) {
                                 WarningCard(
                                     message = stringResource(R.string.broadcast_url_missing_hint),
                                     level = WarningLevel.Error,
                                 )
                             }
-                            InputBlock(state, actions)
-                            SendBlock(state, actions)
                             SnapshotBlock(state, actions)
+                            InputBlock(state, actions, focusRequester)
+                            SendBlock(state, actions)
                         }
                     }
                     Spacer(Modifier.height(bottomInnerPadding))
@@ -237,46 +250,131 @@ private fun GuideBlock(state: BroadcastUiState, actions: BroadcastActions) {
 }
 
 @Composable
-private fun InputBlock(state: BroadcastUiState, actions: BroadcastActions) {
+private fun InputBlock(
+    state: BroadcastUiState,
+    actions: BroadcastActions,
+    focusRequester: FocusRequester,
+) {
+    var heightDp by rememberSaveable { mutableStateOf(160f) }
+    var fullEditing by rememberSaveable { mutableStateOf(false) }
+    var draft by rememberSaveable { mutableStateOf(state.text) }
+    val density = LocalDensity.current
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = stringResource(R.string.broadcast_input_label),
-                fontSize = MiuixTheme.textStyles.title4.fontSize,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.broadcast_input_label),
+                    fontSize = MiuixTheme.textStyles.title4.fontSize,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = {
+                    draft = state.text
+                    fullEditing = true
+                }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Fullscreen,
+                        contentDescription = stringResource(R.string.broadcast_edit_full),
+                        tint = colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            }
             TextField(
                 value = state.text,
                 onValueChange = actions.onTextChanged,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(heightDp.dp)
+                    .focusRequester(focusRequester),
                 label = stringResource(R.string.broadcast_input_hint),
-                minLines = 4,
-                maxLines = 8,
+                minLines = 3,
+                maxLines = 12,
             )
-        }
-
-        val labels = repeatLabels()
-        OverlayDropdownPreference(
-            title = stringResource(R.string.broadcast_repeat),
-            summary = stringResource(R.string.broadcast_repeat_summary),
-            items = labels,
-            startAction = {
-                Icon(
-                    Icons.Rounded.Numbers,
-                    modifier = Modifier.padding(end = 6.dp),
-                    contentDescription = stringResource(R.string.broadcast_repeat),
-                    tint = colorScheme.onBackground,
+            // 上下拖动这条把手可以改输入框高度。
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            heightDp = (heightDp + dragAmount / density.density).coerceIn(100f, 420f)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(colorScheme.onSurfaceVariantSummary.copy(alpha = 0.35f)),
                 )
-            },
-            selectedIndex = (state.repeat - BroadcastApi.MIN_REPEAT).coerceIn(0, labels.lastIndex),
-            onSelectedIndexChange = actions.onRepeatChange,
-        )
+            }
+        }
+    }
+
+    if (fullEditing) {
+        Dialog(
+            onDismissRequest = { fullEditing = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colorScheme.surface)
+                    .padding(20.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.broadcast_edit_full),
+                        fontSize = MiuixTheme.textStyles.title4.fontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                    )
+                    TextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        label = stringResource(R.string.broadcast_input_hint),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TextButton(
+                            text = stringResource(android.R.string.cancel),
+                            onClick = { fullEditing = false },
+                            modifier = Modifier.weight(1f),
+                        )
+                        Button(
+                            onClick = {
+                                actions.onTextChanged(draft)
+                                fullEditing = false
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.save),
+                                fontSize = MiuixTheme.textStyles.button.fontSize,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -295,7 +393,12 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
     }
 
     fun requestSend() {
-        if (!state.canSend) return
+        if (state.sendStatus is SendStatus.Sending) return
+        if (state.text.isBlank()) {
+            // 让 ViewModel 记一条「没输入内容」，提示会显示在页面最上面。
+            actions.onSend()
+            return
+        }
         if (state.confirmsBeforeSend) {
             dialog.showConfirm(
                 title = confirmTitle,
@@ -312,7 +415,6 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SendButton(
-            enabled = state.canSend,
             sending = state.sendStatus is SendStatus.Sending,
             longPress = state.sendsOnLongPress,
             onSend = ::requestSend,
@@ -330,30 +432,38 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
         if (releaseTooEarly) {
             WarningCard(message = stringResource(R.string.broadcast_long_press_too_short))
         }
-        when (val status = state.sendStatus) {
-            is SendStatus.Sending -> WarningCard(
-                message = stringResource(R.string.broadcast_sending),
-                level = WarningLevel.Notice,
-            )
+    }
+}
 
-            is SendStatus.Sent -> WarningCard(
-                message = stringResource(R.string.broadcast_sent, status.repeat),
-                level = WarningLevel.Notice,
-            )
+@Composable
+private fun SendStatusBanner(status: SendStatus) {
+    when (status) {
+        SendStatus.Idle -> Unit
+        SendStatus.Empty -> WarningCard(
+            message = stringResource(R.string.broadcast_empty),
+            level = WarningLevel.Notice,
+        )
 
-            is SendStatus.Rejected -> WarningCard(
-                message = stringForFailure(status.failure) +
-                    status.serverMessage?.let { " · $it" }.orEmpty(),
-            )
+        SendStatus.Sending -> WarningCard(
+            message = stringResource(R.string.broadcast_sending),
+            level = WarningLevel.Notice,
+        )
 
-            is SendStatus.Idle -> Unit
-        }
+        is SendStatus.Sent -> WarningCard(
+            message = stringResource(R.string.broadcast_sent),
+            level = WarningLevel.Success,
+        )
+
+        is SendStatus.Rejected -> WarningCard(
+            message = stringForFailure(status.failure) +
+                status.serverMessage?.let { " · $it" }.orEmpty(),
+            level = WarningLevel.Error,
+        )
     }
 }
 
 @Composable
 private fun SendButton(
-    enabled: Boolean,
     sending: Boolean,
     longPress: Boolean,
     onSend: () -> Unit,
@@ -365,7 +475,7 @@ private fun SendButton(
 
     // Releasing before the timeout cancels this effect, so only a real hold sends.
     LaunchedEffect(pressed) {
-        if (pressed && longPress && enabled) {
+        if (pressed && longPress && !sending) {
             delay(LONG_PRESS_MILLIS)
             holdFired = true
             onSend()
@@ -375,13 +485,14 @@ private fun SendButton(
     Button(
         onClick = {
             when {
+                sending -> Unit
                 !longPress -> onSend()
                 holdFired -> holdFired = false
                 else -> onShortTap()
             }
         },
         modifier = Modifier.fillMaxWidth(),
-        enabled = enabled,
+        enabled = !sending,
         interactionSource = interactionSource,
     ) {
         Text(
@@ -434,32 +545,23 @@ private fun SnapshotBlock(state: BroadcastUiState, actions: BroadcastActions) {
             )
         }
 
-        ArrowPreference(
-            title = stringResource(R.string.broadcast_snapshot_refresh),
-            summary = stringResource(R.string.broadcast_snapshot_refresh_summary),
-            startAction = {
-                Icon(
-                    Icons.Rounded.CameraAlt,
-                    modifier = Modifier.padding(end = 6.dp),
-                    contentDescription = stringResource(R.string.broadcast_snapshot_refresh),
-                    tint = colorScheme.onBackground,
-                )
-            },
-            onClick = actions.onSnapshotClick,
-        )
-
-        if (frame != null) {
+        // 自动刷新时每 2 秒自己抓一帧，手动按钮只会添乱。
+        if (!state.autoRefreshSnapshot) {
             ArrowPreference(
-                title = stringResource(R.string.broadcast_snapshot_full),
+                title = stringResource(
+                    if (frame != null) R.string.broadcast_snapshot_refresh_again
+                    else R.string.broadcast_snapshot_refresh
+                ),
+                summary = stringResource(R.string.broadcast_snapshot_refresh_summary),
                 startAction = {
                     Icon(
-                        Icons.Rounded.Fullscreen,
-                        modifier = Modifier.padding(end = 6.dp).size(24.dp),
-                        contentDescription = stringResource(R.string.broadcast_snapshot_full),
+                        Icons.Rounded.CameraAlt,
+                        modifier = Modifier.padding(end = 6.dp),
+                        contentDescription = null,
                         tint = colorScheme.onBackground,
                     )
                 },
-                onClick = actions.onOpenFullView,
+                onClick = actions.onSnapshotClick,
             )
         }
     }

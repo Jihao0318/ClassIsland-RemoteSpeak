@@ -91,7 +91,17 @@ class BroadcastViewModel(
 
     fun send() {
         val state = _uiState.value
-        if (!state.canSend) return
+        if (state.text.isBlank()) {
+            _uiState.update { it.copy(sendStatus = SendStatus.Empty) }
+            return
+        }
+        if (!state.urlIsValid) {
+            _uiState.update {
+                it.copy(sendStatus = SendStatus.Rejected(BroadcastFailure.INVALID_URL, null))
+            }
+            return
+        }
+        if (state.sendStatus is SendStatus.Sending) return
         sendJob?.cancel()
         sendJob = viewModelScope.launch {
             _uiState.update { it.copy(sendStatus = SendStatus.Sending) }
