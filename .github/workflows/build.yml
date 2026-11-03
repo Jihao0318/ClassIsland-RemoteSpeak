@@ -5,6 +5,13 @@ on:
     branches:
       - main
       - master
+    paths:
+      - "RemoteSpeak/**"
+      - "ServerCheck/**"
+      - "docs/**"
+      - "README.md"
+      - "Icon.svg"
+      - ".github/workflows/build.yml"
     tags:
       - "[0-9]*.[0-9]*.[0-9]*.[0-9]*"
       - "v[0-9]*.[0-9]*.[0-9]*.[0-9]*"
@@ -12,6 +19,13 @@ on:
     branches:
       - main
       - master
+    paths:
+      - "RemoteSpeak/**"
+      - "ServerCheck/**"
+      - "docs/**"
+      - "README.md"
+      - "Icon.svg"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 permissions:

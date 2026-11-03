@@ -14,7 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import com.remotebroadcast.data.remote.BroadcastApi
-import com.remotebroadcast.ui.component.bottombar.LocalMainPagerState
+import com.remotebroadcast.ui.LocalMainPagerState
 import com.remotebroadcast.ui.viewmodel.BroadcastViewModel
 
 @Composable
