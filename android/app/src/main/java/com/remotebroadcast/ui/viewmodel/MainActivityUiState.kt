@@ -12,4 +12,5 @@ data class MainActivityUiState(
     val enableFloatingBottomBarBlur: Boolean,
     val enableSwipeDismiss: Boolean,
     val pagerInterceptionMode: Int,
+    val onboardingDone: Boolean,
 )

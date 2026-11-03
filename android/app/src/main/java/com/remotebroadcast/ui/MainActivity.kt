@@ -54,6 +54,7 @@ import com.remotebroadcast.ui.navigation3.Route
 import com.remotebroadcast.ui.navigation3.rememberNavigator
 import com.remotebroadcast.ui.screen.about.AboutScreen
 import com.remotebroadcast.ui.screen.broadcast.BroadcastPager
+import com.remotebroadcast.ui.screen.onboarding.OnboardingScreen
 import com.remotebroadcast.ui.screen.colorpalette.ColorPaletteScreen
 import com.remotebroadcast.ui.screen.home.HomePager
 import com.remotebroadcast.ui.screen.settings.SettingPager
@@ -124,6 +125,12 @@ class MainActivity : ComponentActivity() {
                 LocalEnableFloatingBottomBarBlur provides uiState.enableFloatingBottomBarBlur,
             ) {
                 TemplateTheme(appSettings = appSettings) {
+                    if (!uiState.onboardingDone) {
+                        OnboardingScreen(
+                            onFinish = viewModel::completeOnboarding,
+                            onSkip = viewModel::skipOnboarding,
+                        )
+                    } else {
                     val swipeDismiss = if (uiState.enableSwipeDismiss) {
                         if (LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) {
                             NavSwipeDirection.RightToLeft
@@ -159,6 +166,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Scaffold { navDisplay() }
+                    }
                 }
             }
         }

@@ -41,6 +41,18 @@ class MainActivityViewModel(
         mainPageState.updateSelectedPage(page)
     }
 
+    /** 首次向导完成后直接落到喊话页，省得用户还要自己往右划。 */
+    fun completeOnboarding(url: String, token: String) {
+        settingRepo.broadcastUrl = url
+        settingRepo.broadcastToken = token
+        settingRepo.broadcastSetupDone = true
+        mainPageState.updateSelectedPage(1)
+    }
+
+    fun skipOnboarding() {
+        settingRepo.broadcastSetupDone = true
+    }
+
     private fun readUiState(): MainActivityUiState {
         return MainActivityUiState(
             appSettings = ThemeController.getAppSettings(templateApp),
@@ -50,6 +62,7 @@ class MainActivityViewModel(
             enableFloatingBottomBarBlur = settingRepo.enableFloatingBottomBarBlur,
             enableSwipeDismiss = settingRepo.enableSwipeDismiss,
             pagerInterceptionMode = settingRepo.pagerInterceptionMode,
+            onboardingDone = settingRepo.broadcastSetupDone,
         )
     }
 
@@ -65,6 +78,7 @@ class MainActivityViewModel(
             "enable_floating_bottom_bar_blur",
             "enable_swipe_dismiss",
             "pager_interception_mode",
+            "broadcast_setup_done",
         )
     }
 }
