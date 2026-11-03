@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.remotebroadcast.ui.LocalMainPagerState
 import com.remotebroadcast.ui.navigation3.Navigator
 import com.remotebroadcast.ui.navigation3.Route
 import com.remotebroadcast.ui.viewmodel.SettingsViewModel
@@ -34,5 +35,12 @@ fun SettingPager(
         onSetSnapshotAutoRefresh = viewModel::setSnapshotAutoRefresh,
     )
 
-    SettingPagerMiuix(uiState, actions, bottomInnerPadding)
+    val mainPagerState = LocalMainPagerState.current
+    SettingPagerMiuix(
+        uiState = uiState,
+        actions = actions,
+        bottomInnerPadding = bottomInnerPadding,
+        editUrlRequest = mainPagerState.pendingSettingsEdit == "url",
+        onEditUrlHandled = { mainPagerState.clearSettingsEdit() },
+    )
 }

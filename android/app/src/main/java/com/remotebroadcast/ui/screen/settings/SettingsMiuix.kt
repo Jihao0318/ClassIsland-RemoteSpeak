@@ -65,6 +65,8 @@ fun SettingPagerMiuix(
     uiState: SettingsUiState,
     actions: SettingsScreenActions,
     bottomInnerPadding: Dp,
+    editUrlRequest: Boolean = false,
+    onEditUrlHandled: () -> Unit = {},
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val enableBlur = LocalEnableBlur.current
@@ -152,6 +154,8 @@ fun SettingPagerMiuix(
                             summaryWhenEmpty = stringResource(id = R.string.broadcast_url_unset),
                             icon = Icons.Rounded.Dashboard,
                             onSave = actions.onSetBroadcastUrl,
+                            openRequest = editUrlRequest,
+                            onOpenRequestHandled = onEditUrlHandled,
                         )
                         TextEditPreference(
                             title = stringResource(id = R.string.broadcast_settings_token),

@@ -46,6 +46,18 @@ class MainPagerState(
         return true
     }
 
+    /** 跳设置页时顺手要打开的输入项，比如 "url"。 */
+    var pendingSettingsEdit by mutableStateOf<String?>(null)
+        private set
+
+    fun requestSettingsEdit(target: String) {
+        pendingSettingsEdit = target
+    }
+
+    fun clearSettingsEdit() {
+        pendingSettingsEdit = null
+    }
+
     fun animateToPage(targetIndex: Int) {
         if (targetIndex == selectedPage) return
 

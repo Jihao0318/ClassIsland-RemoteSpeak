@@ -51,6 +51,7 @@ fun HomePager(
     val actions = HomeActions(
         onServerStatusRefresh = {
             if (serverStatus.baseUrl.isBlank()) {
+                mainPagerState.requestSettingsEdit("url")
                 mainPagerState.animateToPage(2)
             } else {
                 statusViewModel.check(showBusy = true)

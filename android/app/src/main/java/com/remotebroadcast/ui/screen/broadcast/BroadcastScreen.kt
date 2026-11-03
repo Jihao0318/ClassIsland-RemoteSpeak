@@ -63,7 +63,10 @@ fun BroadcastPager(
         actions = actions,
         bottomInnerPadding = bottomInnerPadding,
         focusRequester = focusRequester,
-        onOpenSettings = { mainPagerState.animateToPage(2) },
+        onOpenSettings = {
+            mainPagerState.requestSettingsEdit("url")
+            mainPagerState.animateToPage(2)
+        },
     )
 
     val frame = uiState.snapshot
