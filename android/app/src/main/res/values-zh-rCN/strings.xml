@@ -103,6 +103,7 @@
     <string name="guide_has_token_summary">弹窗里输入访问 Token</string>
     <string name="guide_no_token">没配置，直接开始</string>
     <string name="guide_no_token_summary">发送时不带 Token 请求头</string>
+    <string name="broadcast_input_hint">输入要念的话</string>
     <string name="broadcast_input_label">播报内容</string>
     <string name="broadcast_url_unset">还没设置</string>
     <string name="broadcast_url_placeholder">https://192.168.1.10:8765</string>

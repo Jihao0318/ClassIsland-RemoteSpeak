@@ -239,16 +239,27 @@ private fun GuideBlock(state: BroadcastUiState, actions: BroadcastActions) {
 @Composable
 private fun InputBlock(state: BroadcastUiState, actions: BroadcastActions) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        TextField(
-            value = state.text,
-            onValueChange = actions.onTextChanged,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            label = stringResource(R.string.broadcast_input_label),
-            minLines = 4,
-            maxLines = 8,
-        )
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.broadcast_input_label),
+                fontSize = MiuixTheme.textStyles.title4.fontSize,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+            )
+            TextField(
+                value = state.text,
+                onValueChange = actions.onTextChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.broadcast_input_hint),
+                minLines = 4,
+                maxLines = 8,
+            )
+        }
 
         val labels = repeatLabels()
         OverlayDropdownPreference(
