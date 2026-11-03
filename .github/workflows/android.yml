@@ -37,12 +37,11 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # runner 自带 Android SDK 和 cmdline-tools；不再用 setup-android，
+      # 它内部会执行 `sdkmanager tools`，而新版 SDK 已经没有这个包了。
       - name: Install platform and build tools
         run: |
-          yes | sdkmanager --licenses > /dev/null
+          yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
 
       # 测试包用临时签名，只为了能装到手机上；正式发布换成自己的 keystore。
