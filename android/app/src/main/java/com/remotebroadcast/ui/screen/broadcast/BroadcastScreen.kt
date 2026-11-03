@@ -58,7 +58,13 @@ fun BroadcastPager(
         onOpenFullView = { if (uiState.snapshot != null) showFullView = true },
     )
 
-    BroadcastPagerMiuix(uiState, actions, bottomInnerPadding, focusRequester)
+    BroadcastPagerMiuix(
+        state = uiState,
+        actions = actions,
+        bottomInnerPadding = bottomInnerPadding,
+        focusRequester = focusRequester,
+        onOpenSettings = { mainPagerState.animateToPage(2) },
+    )
 
     val frame = uiState.snapshot
     if (showFullView && frame != null) {

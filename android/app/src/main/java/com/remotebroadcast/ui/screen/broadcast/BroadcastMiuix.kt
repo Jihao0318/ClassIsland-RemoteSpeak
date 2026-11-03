@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -95,8 +96,11 @@ fun BroadcastPagerMiuix(
     actions: BroadcastActions,
     bottomInnerPadding: Dp,
     focusRequester: FocusRequester,
+    onOpenSettings: () -> Unit,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
+    val focusManager = LocalFocusManager.current
+    val blankTap = remember { MutableInteractionSource() }
     val enableBlur = LocalEnableBlur.current
     val backdrop = rememberBlurBackdrop(enableBlur)
     val barColor = if (backdrop != null) Color.Transparent else colorScheme.surface
@@ -122,7 +126,11 @@ fun BroadcastPagerMiuix(
                     .scrollEndHaptic()
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 12.dp)
+                    .clickable(
+                        interactionSource = blankTap,
+                        indication = null,
+                    ) { focusManager.clearFocus() },
                 contentPadding = innerPadding,
                 overscrollEffect = null,
             ) {
@@ -139,6 +147,7 @@ fun BroadcastPagerMiuix(
                                 WarningCard(
                                     message = stringResource(R.string.broadcast_url_missing_hint),
                                     level = WarningLevel.Error,
+                                    onClick = onOpenSettings,
                                 )
                             }
                             SnapshotBlock(state, actions)

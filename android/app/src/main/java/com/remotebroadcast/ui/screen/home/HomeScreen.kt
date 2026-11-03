@@ -49,7 +49,13 @@ fun HomePager(
 
     val mainPagerState = LocalMainPagerState.current
     val actions = HomeActions(
-        onServerStatusRefresh = { statusViewModel.check(showBusy = true) },
+        onServerStatusRefresh = {
+            if (serverStatus.baseUrl.isBlank()) {
+                mainPagerState.animateToPage(2)
+            } else {
+                statusViewModel.check(showBusy = true)
+            }
+        },
         onGoBroadcast = {
             mainPagerState.requestBroadcastFocus()
             mainPagerState.animateToPage(1)
