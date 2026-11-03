@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.remotebroadcast.data.remote.BroadcastApi
+import com.remotebroadcast.data.remote.BroadcastFailure
 import com.remotebroadcast.data.remote.BroadcastOutcome
 import com.remotebroadcast.data.repository.SettingsRepository
 import com.remotebroadcast.data.repository.SettingsRepositoryImpl
