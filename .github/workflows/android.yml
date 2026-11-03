@@ -1,0 +1,70 @@
+name: Build Android
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install platform and build tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+
+      # 测试包用临时签名，只为了能装到手机上；正式发布换成自己的 keystore。
+      - name: Generate test keystore
+        run: |
+          keytool -genkeypair -keystore test.jks -alias remotespeak \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass test123456 -keypass test123456 \
+            -dname "CN=RemoteSpeak Test"
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          ./gradlew :app:assembleRelease --no-daemon \
+            -PKEYSTORE_FILE=$GITHUB_WORKSPACE/test.jks \
+            -PKEYSTORE_PASSWORD=test123456 \
+            -PKEY_ALIAS=remotespeak \
+            -PKEY_PASSWORD=test123456
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RemoteSpeak-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
