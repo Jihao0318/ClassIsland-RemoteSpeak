@@ -22,7 +22,7 @@ void Check(string name, bool ok, string? detail = null)
 }
 
 var mainLog = new RequestLog(TmpFile("main.log"));
-var server = new RemoteSpeakServer(text =>
+var server = new RemoteSpeakServer((text, _) =>
 {
     if (explode)
     {
@@ -147,7 +147,7 @@ server.Dispose();
 using (var blocker = new TcpListener(IPAddress.Any, port + 2))
 {
     blocker.Start();
-    var busy = new RemoteSpeakServer(_ => Task.FromResult(true), new RequestLog(TmpFile("busy.log")));
+    var busy = new RemoteSpeakServer((_, _) => Task.FromResult(true), new RequestLog(TmpFile("busy.log")));
     var retryStates = new List<string>();
     busy.Changed += (_, _) => retryStates.Add($"{busy.Address}|{busy.LastError}");
     var busyError = busy.Start(port + 2, "");
@@ -184,7 +184,7 @@ using (var blocker = new TcpListener(IPAddress.Any, port + 2))
 }
 
 // 11.5 并发请求不能把接受循环卡住
-using (var parallel = new RemoteSpeakServer(_ => Task.FromResult(true), new RequestLog(TmpFile("parallel.log"))))
+using (var parallel = new RemoteSpeakServer((_, _) => Task.FromResult(true), new RequestLog(TmpFile("parallel.log"))))
 {
     parallel.Start(port + 3, "");
     using var bulk = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 3}/") };
@@ -197,7 +197,7 @@ using (var parallel = new RemoteSpeakServer(_ => Task.FromResult(true), new Requ
 }
 
 // 12. 没启动时不监听
-var idle = new RemoteSpeakServer(_ => Task.FromResult(true), new RequestLog(TmpFile("idle.log")));
+var idle = new RemoteSpeakServer((_, _) => Task.FromResult(true), new RequestLog(TmpFile("idle.log")));
 Check("未启动不监听", idle.Address.Length == 0);
 idle.Dispose();
 
@@ -272,7 +272,7 @@ using (var blocker = new TcpListener(IPAddress.Any, port + 5))
 {
     blocker.Start();
     var floodLog = new RequestLog(TmpFile("flood.log"));
-    var stuck = new RemoteSpeakServer(_ => Task.FromResult(true), floodLog);
+    var stuck = new RemoteSpeakServer((_, _) => Task.FromResult(true), floodLog);
     stuck.Start(port + 5, "");
     await Task.Delay(6000); // 期间监督循环至少又重试了两轮
     Check("同一条故障只记一次", floodLog.Count == 1, string.Join(" / ", floodLog.Snapshot().Select(e => e.Display)));
@@ -284,7 +284,7 @@ using (var blocker = new TcpListener(IPAddress.Any, port + 5))
 var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x01, 0x02, 0x03 };
 var snapLog = new RequestLog(TmpFile("snapshot.log"));
 Func<CancellationToken, Task<SnapshotFrame>> snapFake = _ => Task.FromResult(new SnapshotFrame(jpeg, "测试摄像头", 1280, 720));
-var snapServer = new RemoteSpeakServer(_ => Task.FromResult(true), snapLog, ct => snapFake(ct));
+var snapServer = new RemoteSpeakServer((_, _) => Task.FromResult(true), snapLog, ct => snapFake(ct));
 using var snapClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 6}/") };
 
 async Task<(int status, string? contentType, string? cacheControl, byte[] body)> GetSnapshot(string? sentToken, string method = "GET")
@@ -345,7 +345,7 @@ Check("异常之后取景还能用", (await GetSnapshot("snap-tk")).status == 20
 
 // 18.6 开关开着但没接上取景回调
 var bareLog = new RequestLog(TmpFile("snapshot-bare.log"));
-var bareServer = new RemoteSpeakServer(_ => Task.FromResult(true), bareLog);
+var bareServer = new RemoteSpeakServer((_, _) => Task.FromResult(true), bareLog);
 bareServer.Start(port + 7, "", true);
 using (var bareClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 7}/") })
 {
@@ -412,6 +412,7 @@ Check("填了 Token 后 speak 带头", exampleToken.Contains("\"X-Token\": \"tk-
 Check("示例三段都在",
     examplePlain.Contains("/health") && examplePlain.Contains("/speak") && examplePlain.Contains("/snapshot"),
     examplePlain);
+Check("示例带上 repeat 的用法", examplePlain.Contains("repeat"), examplePlain);
 Check("取景没开也把 /snapshot 段给出并提示 404",
     examplePlain.Contains("/snapshot") && examplePlain.Contains("404"),
     examplePlain);
@@ -445,7 +446,7 @@ Check("设置里默认开着记录正常请求", new RemoteSpeak.Models.Settings
 
 var quietLog = new RequestLog(TmpFile("quiet.log"));
 quietLog.LogRequests = false;
-var quietServer = new RemoteSpeakServer(_ => Task.FromResult(true), quietLog);
+var quietServer = new RemoteSpeakServer((_, _) => Task.FromResult(true), quietLog);
 quietServer.Start(port + 8, "tk");
 using (var quietClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 8}/") })
 {
@@ -474,6 +475,90 @@ using (var quietClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0
 }
 
 quietServer.Dispose();
+
+// 23. 重复遍数：老 body 一个字节不用改，repeat 严格校验，接口压过本地
+var plain = SpeakRequest.Parse("{\"text\":\"喂\"}");
+Check("老 body 只有 text 照样能用",
+    plain.Text == "喂" && plain.Repeat == null && plain.Error == null,
+    $"{plain.Text}|{plain.Repeat?.ToString() ?? "null"}|{plain.Error ?? "null"}");
+var withRepeat = SpeakRequest.Parse("{\"text\":\"喂\",\"repeat\":3}");
+Check("repeat 读得出来", withRepeat.Repeat == 3 && withRepeat.Error == null, withRepeat.Error ?? "null");
+Check("认不出的字段不影响", SpeakRequest.Parse("{\"text\":\"喂\",\"foo\":1}").Error == null);
+foreach (var bad in new[] { "0", "-1", "6", "2.5", "\"3\"", "true", "null" })
+{
+    var parsed = SpeakRequest.Parse($"{{\"text\":\"喂\",\"repeat\":{bad}}}");
+    Check($"repeat={bad} 直接拒并说明范围", parsed.Error != null && parsed.Error.Contains("1-5"),
+        parsed.Error ?? "没报错");
+}
+
+Check("空 text 仍按老规矩算没给文本", SpeakRequest.Parse("{\"text\":\"  \"}").Text.Length == 0);
+Check("不是 JSON 时不报 repeat 的错", SpeakRequest.Parse("喂").Error == null && SpeakRequest.Parse("喂").Text.Length == 0);
+Check("接口没给遍数就用本地的", SpeakRequest.ResolveRepeat(null, 3) == 3, SpeakRequest.ResolveRepeat(null, 3).ToString());
+Check("接口给了就压过本地", SpeakRequest.ResolveRepeat(2, 5) == 2, SpeakRequest.ResolveRepeat(2, 5).ToString());
+Check("本地越界也钳进 1-5",
+    SpeakRequest.ResolveRepeat(null, 0) == 1 && SpeakRequest.ResolveRepeat(null, 9) == 5,
+    $"{SpeakRequest.ResolveRepeat(null, 0)}/{SpeakRequest.ResolveRepeat(null, 9)}");
+Check("念一遍时朗读文本就是原文", SpeakScript.SpeechText("第三节课下课", 1) == "第三节课下课",
+    SpeakScript.SpeechText("第三节课下课", 1));
+Check("念两遍中间断开好停顿", SpeakScript.SpeechText("下课了", 2) == "下课了。\n下课了。",
+    SpeakScript.SpeechText("下课了", 2).Replace("\n", "\\n"));
+Check("原文带句末标点不重复补", SpeakScript.SpeechText("下课了。", 2) == "下课了。\n下课了。",
+    SpeakScript.SpeechText("下课了。", 2).Replace("\n", "\\n"));
+Check("问号也算句末", SpeakScript.SpeechText("下课了？", 2) == "下课了？\n下课了？",
+    SpeakScript.SpeechText("下课了？", 2).Replace("\n", "\\n"));
+
+var ds = new RemoteSpeak.Models.Settings { WordsPerSecond = 5 };
+Check("一遍的时长跟以前完全一样",
+    Math.Abs(ds.EstimateOverlayDuration("abcdefghij").TotalSeconds - 4) < 0.01,
+    ds.EstimateOverlayDuration("abcdefghij").TotalSeconds.ToString());
+Check("三遍按三倍字数估",
+    Math.Abs(ds.EstimateOverlayDuration("abcdefghij", 3).TotalSeconds - 8) < 0.01,
+    ds.EstimateOverlayDuration("abcdefghij", 3).TotalSeconds.ToString());
+ds.MaxSpeechDurationSeconds = 10;
+Check("再长也顶不过正文最长",
+    Math.Abs(ds.EstimateOverlayDuration("abcdefghij", 5).TotalSeconds - 10) < 0.01,
+    ds.EstimateOverlayDuration("abcdefghij", 5).TotalSeconds.ToString());
+Check("本地默认只念一遍", new RemoteSpeak.Models.Settings().RepeatTimes == 1);
+var badRepeat = new RemoteSpeak.Models.Settings { RepeatTimes = 0 };
+badRepeat.FixUp();
+Check("FixUp 把 0 遍钳回 1", badRepeat.RepeatTimes == 1, badRepeat.RepeatTimes.ToString());
+var bigRepeat = new RemoteSpeak.Models.Settings { RepeatTimes = 9 };
+bigRepeat.FixUp();
+Check("FixUp 把 9 遍钳到 5", bigRepeat.RepeatTimes == 5, bigRepeat.RepeatTimes.ToString());
+
+var repLog = new RequestLog(TmpFile("repeat.log"));
+var repRepeats = new List<int?>();
+var repServer = new RemoteSpeakServer((text, repeat) =>
+{
+    repRepeats.Add(repeat);
+    return Task.FromResult(true);
+}, repLog);
+repServer.Start(port + 9, "");
+using var repClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 9}/") };
+
+async Task<(int status, string body)> PostSpeak(string json)
+{
+    var res = await repClient.PostAsync("/speak", new StringContent(json, Encoding.UTF8, "application/json"));
+    return ((int)res.StatusCode, await res.Content.ReadAsStringAsync());
+}
+
+var r3 = await PostSpeak("{\"text\":\"重复三遍\",\"repeat\":3}");
+Check("带 repeat 的播报 = 202", r3.status == 202, $"{r3.status} {r3.body}");
+Check("遍数原样交给播报回调", repRepeats.Count > 0 && repRepeats[^1] == 3,
+    repRepeats[^1]?.ToString() ?? "null");
+var rBad = await PostSpeak("{\"text\":\"喂\",\"repeat\":0}");
+Check("repeat 非法 → 400 并写明范围", rBad.status == 400 && rBad.body.Contains("1-5"), rBad.body);
+var rOld = await PostSpeak("{\"text\":\"老调用方\"}");
+Check("不带 repeat 时回调收到 null", rOld.status == 202 && repRepeats[^1] == null,
+    repRepeats[^1]?.ToString() ?? "null");
+Check("日志行里带上念了几遍",
+    repLog.Snapshot().Any(e => e.Source == "HTTP 202" && e.Message.Contains("×3")),
+    string.Join(" / ", repLog.Snapshot().Where(e => e.Source == "HTTP 202").Select(e => e.Message)));
+Check("不带 repeat 时日志不硬编一个遍数",
+    repLog.Snapshot().Any(e => e.Source == "HTTP 202" && !e.Message.Contains("×")),
+    string.Join(" / ", repLog.Snapshot().Where(e => e.Source == "HTTP 202").Select(e => e.Message)));
+
+repServer.Dispose();
 
 Directory.Delete(tmpDir, true);
 

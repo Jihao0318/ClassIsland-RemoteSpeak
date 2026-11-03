@@ -24,11 +24,11 @@ dotnet build RemoteSpeak/RemoteSpeak.csproj -c Release -p:CreateCipx=true -p:Gen
 dotnet run -c Release --project ServerCheck
 ```
 
-114 项断言覆盖 HTTP 协议、Token 校验、CORS、日志流水（正常请求 + 错误）、自愈重绑、时长估算、取景的尺寸换算，以及「复制调用示例」生成的那段代码（三段齐全、Token 该有才有、括号配平、Token 里的引号被转义）。Windows 和 Linux 都能全绿。
+146 项断言覆盖 HTTP 协议、Token 校验、CORS、日志流水（正常请求 + 错误）、自愈重绑、时长估算、取景的尺寸换算、body 里 `repeat` 的校验与遍数优先级，以及「复制调用示例」生成的那段代码（三段齐全、Token 该有才有、括号配平、Token 里的引号被转义）。Windows 和 Linux 都能全绿。
 
 **摄像头和打断都不在无头覆盖范围内**：取景要真实设备，打断要真实的提醒工作线程与语音提供方。编译只能证明 API 用法对，效果得装到 ClassIsland 上用设置页的「试拍一张」实测。
 
-所以 `ServerCheck` 只把不依赖 WinRT 的那几个文件编进去（`RemoteSpeakServer.cs`、`SnapshotFrame.cs`、`SnapshotScale.cs`、`CallExample.cs`、`RequestLog.cs`、`Settings.cs`），项目本身仍是 `net8.0`；`CameraSnapshotter.cs` 不在列表里，加了就会把 Windows SDK 投影拖进测试工程，Linux 上直接编不过。缩放、档位钳制、错误码到状态码的映射、示例代码的拼装都留在能跑断言的那一侧，WinRT 那一层只剩设备枚举、取帧、编码三件事。示例那段之所以值得测：拼错一个逗号，用户粘到网页里就是 `SyntaxError`，而它在设置页里根本看不见。
+所以 `ServerCheck` 只把不依赖 WinRT 的那几个文件编进去（`RemoteSpeakServer.cs`、`SnapshotFrame.cs`、`SnapshotScale.cs`、`CallExample.cs`、`SpeakRequest.cs`、`SpeakScript.cs`、`RequestLog.cs`、`Settings.cs`），项目本身仍是 `net8.0`；`CameraSnapshotter.cs` 不在列表里，加了就会把 Windows SDK 投影拖进测试工程，Linux 上直接编不过。缩放、档位钳制、错误码到状态码的映射、示例代码的拼装都留在能跑断言的那一侧，WinRT 那一层只剩设备枚举、取帧、编码三件事。示例那段之所以值得测：拼错一个逗号，用户粘到网页里就是 `SyntaxError`，而它在设置页里根本看不见。
 
 ## 平台目标与打包
 
@@ -53,6 +53,8 @@ RemoteSpeak/                          插件本体（.NET 8 + ClassIsland.Plugin
   Services/SnapshotFrame.cs           取景结果与「拍不出图」异常：服务端只认这两个，不认 WinRT
   Services/SnapshotScale.cs           档位 → 实际出图尺寸的等比换算
   Services/CallExample.cs             「复制调用示例」的拼装，端口/Token/取景状态填进模板
+  Services/SpeakRequest.cs            body 解析：text + 可选 repeat，接口没给遍数时交 null
+  Services/SpeakScript.cs             把一句正文拼成要念 N 遍的朗读文本（画面文本不动）
   Services/RequestLog.cs                请求流水与错误：300 条环形，落盘 error.log
   Views/SettingsPages/                设置页
   icon.png                            插件图标（Icon.svg 光栅化来的，宿主只认位图）
@@ -65,23 +67,24 @@ Icon.svg                              README 头图与图标的矢量源
 
 `.github/workflows/build.yml`：
 
-- push 到 `main`/`master` 或发 PR：构建、跑测试、上传 `.cipx` artifact
-- 推送版本 tag：额外发布 Release，附 `.cipx` 和 `checksums.md`
+- push 到 `main`/`master` 或发 PR：构建、校验包内文件、上传 `.cipx` artifact
+- 推送版本 tag：额外发布 Release，附 `.cipx`
 
 发版前把 `RemoteSpeak/manifest.yml` 与 `RemoteSpeak/RemoteSpeak.csproj` 里的版本改成同一个四段版本号，再打 tag：
 
 ```bash
-git tag v1.1.0.0
-git push origin v1.1.0.0
+git tag v1.2.0.0
+git push origin v1.2.0.0
 ```
 
 tag 与两处版本不一致时工作流会直接失败，不会发出一个版本号对不上的包。`checksums.md` 是上架 ClassIsland 插件市场用的 MD5 校验信息，从 Release 本地安装不读它。
 
-## 六个坑
+## 七个坑
 
 - 提醒只能由提供方实例本身发出，且 `ShowNotification` 往下会构造 Avalonia 控件，**必须回到 UI 线程**（`Dispatcher.UIThread.InvokeAsync`）；在线程池上调偶尔能过，偶尔就是被 `catch` 吞掉的跨线程异常。
 - 打断旧播报时得**先关掉旧请求两段的 `IsSpeechEnabled`，再 `Cancel()`**：宿主的 `PopRequests` 只按状态跳过 `Cancelled/Completed`，还在排队的请求被取消后状态仍是 `Queued`，照样会被取出——而工作线程取出它的第一件事就是把它的内容塞进语音队列。顺序反了就会先念完旧句子再念新的。
 - 改端口或 Token 会走 `Stop()` → `Start()`。旧监督循环可能在 `Cancel()` 生效前从 `GetContextAsync` 抛出来，光看 `_wantRunning` 会以为监听真断了，转头把刚绑好的新监听器关掉。现在每个循环带一个 `generation`，代次对不上就直接退出。
 - 取景只能用 `MediaCaptureMemoryPreference.Cpu` + `MediaFrameReader`，并且**头两张要丢掉**：自动曝光还没收敛，第一张平均亮度只有稳定后的一半不到，留着就是「拍出来是黑的」。想省事直接 `CapturePhotoToStreamAsync` 不行——它出的是全尺寸原图，档位没地方生效。
 - 共享模式（`SharedReadOnly`）下 `SetFormatAsync` 会抛 `0x80070020`，想让摄像头直接出小图就得 `ExclusiveControl`，而独占会把正在用摄像头的程序踢掉。所以尺寸在 `BitmapEncoder.BitmapTransform` 这一步缩，别去改设备格式。
+- 「念几遍」不用碰语音队列：`NotificationContent` 的显示文本（模板里的 `SimpleTextTemplateData.Text`）和 `SpeechContent` 是**两个字段**，`CreateSimpleTextContent` 都给成同一个字符串，但 factory 回调在其后执行——只改 `SpeechContent` 就能连着念 N 遍而画面还是一个字不变。代价是遍数必须乘进正文 `Duration`：宿主的 `NotificationWorkerService` 在正文会话结束时直接 `ClearSpeechQueue()`，画面一收，没念完的遍数就没了。
 - 成功那行日志要在**回写响应之前**记。先写响应后记，客户端拿到 `202` 的那一刻列表里还是空的——设置页看起来像"请求成功了但没记录"，无头断言也会因为这一瞬间的先后关系时好时坏。

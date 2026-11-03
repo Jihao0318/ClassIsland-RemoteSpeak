@@ -101,7 +101,7 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
     private Task<SnapshotFrame> Capture(CancellationToken cancellationToken)
         => _camera.CaptureAsync(_settings.SnapshotDeviceId, _settings.SnapshotResolution, cancellationToken);
 
-    private async Task<bool> Speak(string text)
+    private async Task<bool> Speak(string text, int? repeat)
     {
         var provider = _state.Provider;
         if (provider == null)
@@ -111,7 +111,7 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
 
         try
         {
-            await provider.SpeakAsync(text).ConfigureAwait(false);
+            await provider.SpeakAsync(text, repeat).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)

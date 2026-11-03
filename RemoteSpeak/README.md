@@ -16,12 +16,12 @@ await fetch("http://localhost:8765/speak", {
     "Content-Type": "application/json; charset=utf-8",
     "X-Token": "你的Token"
   },
-  body: JSON.stringify({ text: "这段话会被念出来" })
+  body: JSON.stringify({ text: "这段话会被念出来", repeat: 3 })
 });
 ```
 
 `GET /health` 探活，`POST /speak` 播报，`GET /snapshot` 取一帧本机摄像头画面（默认关着，要在「摄像头取景」里打开）。
-请求体上限 64 KB，`202` 表示已受理。
+请求体上限 64 KB，`202` 表示已受理。`repeat` 可选，1–5 遍，不写就用设置里的「重复遍数」；遍数只加在朗读文本上，画面还是原文那一句。
 朗读用的是 ClassIsland 自己选定的语音引擎，本插件不带第二套朗读通道。
 设置页的「复制调用示例」会按当前端口和 Token 生成 `health` / `speak` / `snapshot` 三段现成代码。
 

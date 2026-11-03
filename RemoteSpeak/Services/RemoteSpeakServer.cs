@@ -16,8 +16,8 @@ public sealed class RemoteSpeakServer : IDisposable
     private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(15);
 
-    /// <summary>收到文本就交给提醒队列；返回 false 表示插件还没就绪。</summary>
-    private readonly Func<string, Task<bool>> _onText;
+    /// <summary>收到文本就交给提醒队列，第二个参数是接口的 repeat（没给就是 null，听本地设置的）；返回 false 表示插件还没就绪。</summary>
+    private readonly Func<string, int?, Task<bool>> _onText;
 
     /// <summary>取景回调；没接上时 /snapshot 一律回 503。</summary>
     private readonly Func<CancellationToken, Task<SnapshotFrame>>? _onSnapshot;
@@ -47,7 +47,7 @@ public sealed class RemoteSpeakServer : IDisposable
     private int _generation;
 
     public RemoteSpeakServer(
-        Func<string, Task<bool>> onText,
+        Func<string, int?, Task<bool>> onText,
         RequestLog log,
         Func<CancellationToken, Task<SnapshotFrame>>? onSnapshot = null)
     {
@@ -342,14 +342,20 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
-            var text = await ReadTextAsync(request).ConfigureAwait(false);
-            if (text == null)
+            var payload = await ReadSpeakAsync(request).ConfigureAwait(false);
+            if (payload == null)
             {
                 await FailAsync(request, response, HttpStatusCode.RequestEntityTooLarge, "文本太长了").ConfigureAwait(false);
                 return;
             }
 
-            if (text.Length == 0)
+            if (payload.Error != null)
+            {
+                await FailAsync(request, response, HttpStatusCode.BadRequest, payload.Error).ConfigureAwait(false);
+                return;
+            }
+
+            if (payload.Text.Length == 0)
             {
                 await FailAsync(request, response, HttpStatusCode.BadRequest, "body 里要有非空的 text").ConfigureAwait(false);
                 return;
@@ -361,7 +367,7 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
-            if (!await _onText(text).ConfigureAwait(false))
+            if (!await _onText(payload.Text, payload.Repeat).ConfigureAwait(false))
             {
                 await FailAsync(request, response, HttpStatusCode.ServiceUnavailable, "插件正在启动，稍后再试").ConfigureAwait(false);
                 return;
@@ -369,7 +375,9 @@ public sealed class RemoteSpeakServer : IDisposable
 
             // 受理成功也留一行，回看才知道网页到底递进来了什么；正文只留前 20 字。
             // 先记再回响应：真正的成功是提供方接下了，回写只是管道。
-            _log.AddRequest("HTTP 202", $"POST /speak · {text.Length} 字 · {RequestLog.Summarize(text)}");
+            var times = payload.Repeat == null ? "" : $" ×{payload.Repeat}";
+            _log.AddRequest("HTTP 202",
+                $"POST /speak · {payload.Text.Length} 字{times} · {RequestLog.Summarize(payload.Text)}");
             await WriteAsync(response, HttpStatusCode.Accepted, "{\"ok\":true}").ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -495,8 +503,8 @@ public sealed class RemoteSpeakServer : IDisposable
         return string.Equals(request.Headers["X-Token"], _token, StringComparison.Ordinal);
     }
 
-    /// <summary>取 body 里的 text；body 超限返回 null，格式不对或空白返回空串。</summary>
-    private static async Task<string?> ReadTextAsync(HttpListenerRequest request)
+    /// <summary>读 body 并解析；body 超限返回 null，格式不对或空白按老规矩交空文本。</summary>
+    private static async Task<SpeakRequest?> ReadSpeakAsync(HttpListenerRequest request)
     {
         if (request.ContentLength64 > MaxBodyBytes)
         {
@@ -504,26 +512,18 @@ public sealed class RemoteSpeakServer : IDisposable
         }
 
         using var reader = new StreamReader(request.InputStream, Encoding.UTF8);
-        var body = await reader.ReadToEndAsync().ConfigureAwait(false);
-
+        string body;
         try
         {
-            using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("text", out var field) && field.ValueKind == JsonValueKind.String)
-            {
-                return (field.GetString() ?? string.Empty).Trim();
-            }
-        }
-        catch (JsonException)
-        {
-            // 不是合法 JSON，按空白文本回 400。
+            body = await reader.ReadToEndAsync().ConfigureAwait(false);
         }
         catch (IOException)
         {
             // 超时或客户端半路断开，按空白文本回 400。
+            return new SpeakRequest(string.Empty, null, null);
         }
 
-        return string.Empty;
+        return SpeakRequest.Parse(body);
     }
 
     private static void AddCors(HttpListenerResponse response)

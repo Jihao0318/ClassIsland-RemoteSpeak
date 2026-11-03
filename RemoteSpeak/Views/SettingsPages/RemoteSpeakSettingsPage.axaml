@@ -100,7 +100,18 @@
                                       Value="{Binding Settings.MaxSpeechDurationSeconds, Mode=TwoWay}" />
                     </StackPanel>
 
-                    <TextBlock Text="正文是静止的一行，不滚动：字比画面宽就只显示得下的一部分，末尾收成省略号，但会整句念完。停留时间按「字数 ÷ 语速 + 2 秒」估，再套上面的最长时间——画面一收宿主就清空语音队列，所以估短了会把句子截断，宁可放宽。"
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="重复遍数" Width="116" VerticalAlignment="Center" />
+                        <fa:NumberBox Width="140" Minimum="1" Maximum="5" SmallChange="1"
+                                      SpinButtonPlacementMode="Inline"
+                                      Value="{Binding Settings.RepeatTimes, Mode=TwoWay}" />
+                        <TextBlock Text="接口带了 repeat 就以接口为准"
+                                   FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <TextBlock Text="正文是静止的一行，不滚动：字比画面宽就只显示得下的一部分，末尾收成省略号，但会整句念完。停留时间按「字数 × 遍数 ÷ 语速 + 2 秒」估，再套上面的最长时间——画面一收宿主就清空语音队列，所以估短了会把句子截断，宁可放宽。"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                    <TextBlock Text="重复遍数只改朗读的那份文本，画面上还是原文那一句（宿主把显示文本和朗读文本分成两个字段）。念完一遍接着念下一遍，中间靠句末标点断开；原文没带标点会补一个句号，只为停顿，画面看不到它。"
                                FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
                 </StackPanel>
             </fa:SettingsExpander>
@@ -190,7 +201,7 @@
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="POST" FontSize="12" Opacity="0.75" Margin="0,4,0,0" />
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="/speak" FontSize="12" Margin="0,4,0,0" />
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="播报。body 是 JSON，只有一个字段：{ &quot;text&quot;: &quot;要被朗读的文本&quot; }"
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="播报。body 是 JSON：{ &quot;text&quot;: &quot;要被朗读的文本&quot;, &quot;repeat&quot;: 3 }；repeat 可选，1-5"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,4,0,0" />
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="GET" FontSize="12" Opacity="0.75" Margin="0,8,0,0" />
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="/snapshot" FontSize="12" Margin="0,8,0,0" />
@@ -209,7 +220,7 @@
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="202" FontSize="12" />
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="已受理——只代表进了队列，不代表念完了" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="400" FontSize="12" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="text 为空、缺这个字段，或者 body 不是合法 JSON" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="text 为空、缺这个字段、repeat 不在 1-5，或者 body 不是合法 JSON" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="401" FontSize="12" />
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="Token 不对——上面填了 Token，请求就得带 X-Token 头" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Grid.Row="4" Grid.Column="0" Text="404" FontSize="12" />
@@ -228,6 +239,8 @@
 
                     <TextBlock Text="行为说明" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0" />
                     <StackPanel Spacing="4">
+                        <TextBlock Text="· 同一句可以连念几遍：接口的 repeat（1-5）优先，没写就用「画面与朗读」里的重复遍数；画面上只显示一次原文，念的是重复过的那份。"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Text="· 新播报顶掉上一条：旧画面立刻收，念到一半的语音立刻掐，连发多条只有最后一条会念完。"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Text="· 打断的范围比预期大：宿主的语音队列全局只有一条，掐的时候别的插件排队的朗读会一起清空。"

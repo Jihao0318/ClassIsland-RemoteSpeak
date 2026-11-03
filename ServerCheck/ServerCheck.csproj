@@ -12,6 +12,8 @@
     <Compile Include="..\RemoteSpeak\Services\SnapshotFrame.cs" />
     <Compile Include="..\RemoteSpeak\Services\SnapshotScale.cs" />
     <Compile Include="..\RemoteSpeak\Services\CallExample.cs" />
+    <Compile Include="..\RemoteSpeak\Services\SpeakRequest.cs" />
+    <Compile Include="..\RemoteSpeak\Services\SpeakScript.cs" />
     <Compile Include="..\RemoteSpeak\Services\RequestLog.cs" />
     <Compile Include="..\RemoteSpeak\Models\Settings.cs" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />

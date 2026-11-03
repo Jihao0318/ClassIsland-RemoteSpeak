@@ -49,6 +49,10 @@ public partial class Settings : ObservableObject
     [ObservableProperty]
     private bool _logRequests = true;
 
+    /// <summary>本地默认念几遍；接口带了 repeat 就以接口为准。</summary>
+    [ObservableProperty]
+    private int _repeatTimes = 1;
+
     private static readonly int[] SnapshotResolutions = [360, 720, 1080];
 
     /// <summary>NumberBox 被清空时会被绑成 0，这里挡回去，免得服务起在无效端口上。</summary>
@@ -105,14 +109,16 @@ public partial class Settings : ObservableObject
         MaxSpeechDurationSeconds = MaxSpeechDurationSeconds is >= 5 and <= 600 ? MaxSpeechDurationSeconds : 120;
         SnapshotDeviceId = SnapshotDeviceId?.Trim() ?? "";
         SnapshotResolution = Array.IndexOf(SnapshotResolutions, SnapshotResolution) >= 0 ? SnapshotResolution : 720;
+        RepeatTimes = Math.Clamp(RepeatTimes, 1, 5);
     }
 
     /// <summary>
-    /// 正文该占多久：按字数估算念完要多久。画面一结束宿主就清空语音队列，所以只放宽不收窄。
+    /// 正文该占多久：按字数估算念完要多久，念几遍就乘几遍。
+    /// 画面一结束宿主就清空语音队列，所以只放宽不收窄——估短了后面的几遍会被吞掉。
     /// </summary>
-    public TimeSpan EstimateOverlayDuration(string text)
+    public TimeSpan EstimateOverlayDuration(string text, int times = 1)
     {
-        var seconds = text.Length / WordsPerSecond + 2;
+        var seconds = text.Length * Math.Max(times, 1) / WordsPerSecond + 2;
         return TimeSpan.FromSeconds(Math.Min(Math.Max(seconds, 3), MaxSpeechDurationSeconds));
     }
 }

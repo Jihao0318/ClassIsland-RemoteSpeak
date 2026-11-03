@@ -28,7 +28,7 @@ public static class CallExample
                headers: {
                  "Content-Type": "application/json; charset=utf-8",{{tokenHeader}}
                },
-               body: JSON.stringify({ text: "这段话会被念出来" })
+               body: JSON.stringify({ text: "这段话会被念出来", repeat: 3 }) // repeat 可选，1-5；不写就用设置里的遍数
              });
 
              // 3. 取一帧摄像头画面，成功回 image/jpeg{{snapshotNote}}

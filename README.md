@@ -47,6 +47,7 @@ await fetch("http://localhost:8765/speak", {
 
 - **只绑环回**：监听 `localhost` 与 `127.0.0.1`，默认 `8765` 端口，普通权限即可。
 - **打断式播报**：新播报顶掉上一条，旧画面立刻收，念到一半的语音立刻掐。
+- **可以念几遍**：接口 `repeat` 或设置里的重复遍数，1–5 遍，接口优先；画面只显示一次原文。
 - **朗读交给宿主**：用 ClassIsland 选定的语音引擎与音色，插件只负责发提醒。
 - **服务自愈**：端口被占或休眠断连，按 1s→15s 退避在后台重绑。
 - **可选 Token**：填了就必须带 `X-Token`；留空表示本机程序都能触发。
@@ -73,6 +74,7 @@ await fetch("http://localhost:8765/speak", {
 | 遮罩文字 | `远程播报` | 提醒遮罩上显示的短语 |
 | 遮罩时长 | `2` 秒 | |
 | 语速 | `4.5` 字/秒 | 只用来估算正文停留时间 |
+| 重复遍数 | `1` | 同一句念几遍（1–5）；接口带 `repeat` 时以接口为准 |
 | 正文最长 | `120` 秒 | 长文本不会一直占着画面 |
 | 摄像头取景 | 关闭 | 开启后 `GET /snapshot` 回一帧 JPEG；可选摄像头与出图尺寸 |
 | 记录正常请求 | 开启 | 关掉只记错误；日志最多 300 条，Token 永不记录 |
@@ -92,7 +94,7 @@ dotnet build RemoteSpeak/RemoteSpeak.csproj -c Release -p:CreateCipx=true -p:Gen
 
 产物：`RemoteSpeak/cipx/RemoteSpeak.cipx`。
 
-推送到 `main` 或发 PR 时 CI 会构建并跑测试；推送 `v1.1.0.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
+推送到 `main` 或发 PR 时 CI 会构建并打包；推送 `v1.2.0.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
 
 ## 反馈
 

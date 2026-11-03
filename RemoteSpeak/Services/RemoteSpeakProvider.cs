@@ -32,15 +32,18 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
     /// <summary>
     /// 播出一条播报：先掐掉上一条的画面和语音，再发这一条。等排进队列才返回；宿主 UI 线程上炸了就原样抛给调用方。
     /// </summary>
-    public async Task SpeakAsync(string text)
+    /// <param name="text">要念的正文，也是画面上显示的那一行。</param>
+    /// <param name="apiRepeat">接口的 repeat；没给就用设置里的「重复遍数」。</param>
+    public async Task SpeakAsync(string text, int? apiRepeat)
     {
+        var times = SpeakRequest.ResolveRepeat(apiRepeat, _settings.RepeatTimes);
         // 发送要落到宿主的 UI 线程上：ShowNotification 往下会碰提醒窗口的控件，
         // 在线程池上调偶尔能过，偶尔就是跨线程异常，没必要赌。
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             SuppressOutstanding();
             IAppHost.GetService<ISpeechService>().ClearSpeechQueue();
-            var request = BuildRequest(text);
+            var request = BuildRequest(text, times);
             Track(request);
             ShowNotification(request);
         });
@@ -96,7 +99,7 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
         }
     }
 
-    private NotificationRequest BuildRequest(string text)
+    private NotificationRequest BuildRequest(string text, int times)
     {
         return new NotificationRequest
         {
@@ -109,13 +112,19 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
                     // 朗读交给正文那一段，两段都开会把同一句话念两遍。
                     content.IsSpeechEnabled = false;
                 }),
-            OverlayContent = BuildOverlay(text)
+            OverlayContent = BuildOverlay(text, times)
         };
     }
 
     /// <summary>正文只做静态一行显示：摆不下就摆不下，念不能少。</summary>
-    private NotificationContent BuildOverlay(string text) =>
+    private NotificationContent BuildOverlay(string text, int times) =>
         NotificationContent.CreateSimpleTextContent(
             text,
-            content => content.Duration = _settings.EstimateOverlayDuration(text));
+            content =>
+            {
+                content.Duration = _settings.EstimateOverlayDuration(text, times);
+                // 画面上还是原文那一句，只有朗读文本按遍数重复——
+                // NotificationContent 的显示文本（模板里的 Text）和 SpeechContent 是两个字段。
+                content.SpeechContent = SpeakScript.SpeechText(text, times);
+            });
 }
