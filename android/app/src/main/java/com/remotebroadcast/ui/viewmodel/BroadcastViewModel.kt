@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,20 @@ class BroadcastViewModel(
 
     private var sendJob: Job? = null
     private var snapshotJob: Job? = null
+    private var statusJob: Job? = null
+
+    /** 顶部提示只留几秒，别一直挂在那儿；发送中的那条要留到有结果。 */
+    private fun showStatus(status: SendStatus, durationMs: Long = 3000) {
+        statusJob?.cancel()
+        _uiState.update { it.copy(sendStatus = status) }
+        if (status == SendStatus.Sending) return
+        statusJob = viewModelScope.launch {
+            delay(durationMs)
+            _uiState.update {
+                if (it.sendStatus == status) it.copy(sendStatus = SendStatus.Idle) else it
+            }
+        }
+    }
 
     private fun readPersisted(): BroadcastUiState = BroadcastUiState(
         baseUrl = repo.broadcastUrl,
@@ -58,6 +73,7 @@ class BroadcastViewModel(
     }
 
     fun onTextChanged(value: String) {
+        statusJob?.cancel()
         _uiState.update { it.copy(text = value, sendStatus = SendStatus.Idle) }
     }
 
@@ -92,29 +108,26 @@ class BroadcastViewModel(
     fun send() {
         val state = _uiState.value
         if (state.text.isBlank()) {
-            _uiState.update { it.copy(sendStatus = SendStatus.Empty) }
+            showStatus(SendStatus.Empty)
             return
         }
         if (!state.urlIsValid) {
-            _uiState.update {
-                it.copy(sendStatus = SendStatus.Rejected(BroadcastFailure.INVALID_URL, null))
-            }
+            showStatus(SendStatus.Rejected(BroadcastFailure.INVALID_URL, null))
             return
         }
         if (state.sendStatus is SendStatus.Sending) return
         sendJob?.cancel()
         sendJob = viewModelScope.launch {
-            _uiState.update { it.copy(sendStatus = SendStatus.Sending) }
+            showStatus(SendStatus.Sending)
             val outcome = withContext(Dispatchers.IO) {
                 BroadcastApi.speak(state.baseUrl, state.token, state.text, state.repeat)
             }
-            _uiState.update {
-                when (outcome) {
-                    is BroadcastOutcome.Success -> it.copy(sendStatus = SendStatus.Sent(outcome.value))
-                    is BroadcastOutcome.Failed -> it.copy(
-                        sendStatus = SendStatus.Rejected(outcome.failure, outcome.serverMessage),
-                    )
-                }
+            when (outcome) {
+                is BroadcastOutcome.Success -> showStatus(SendStatus.Sent(outcome.value))
+                is BroadcastOutcome.Failed -> showStatus(
+                    SendStatus.Rejected(outcome.failure, outcome.serverMessage),
+                    durationMs = 5000,
+                )
             }
         }
     }
