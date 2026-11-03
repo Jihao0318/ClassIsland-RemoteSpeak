@@ -1,9 +1,10 @@
 package com.remotebroadcast.ui.screen.broadcast
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -27,7 +28,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.TipsAndUpdates
 import androidx.compose.material.icons.rounded.VideocamOff
@@ -50,13 +53,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import com.remotebroadcast.R
 import com.remotebroadcast.data.remote.BroadcastApi
@@ -256,125 +256,30 @@ private fun InputBlock(
     actions: BroadcastActions,
     focusRequester: FocusRequester,
 ) {
-    var heightDp by rememberSaveable { mutableStateOf(160f) }
-    var fullEditing by rememberSaveable { mutableStateOf(false) }
-    var draft by rememberSaveable { mutableStateOf(state.text) }
-    val density = LocalDensity.current
-
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.broadcast_input_label),
-                    fontSize = MiuixTheme.textStyles.title4.fontSize,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = {
-                    draft = state.text
-                    fullEditing = true
-                }) {
-                    Icon(
-                        imageVector = Icons.Rounded.Fullscreen,
-                        contentDescription = stringResource(R.string.broadcast_edit_full),
-                        tint = colorScheme.onSurfaceVariantSummary,
-                    )
-                }
-            }
+            Text(
+                text = stringResource(R.string.broadcast_input_label),
+                fontSize = MiuixTheme.textStyles.title4.fontSize,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+            )
             TextField(
                 value = state.text,
                 onValueChange = actions.onTextChanged,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(heightDp.dp)
+                    .height(120.dp)
                     .focusRequester(focusRequester),
                 label = stringResource(R.string.broadcast_input_hint),
                 minLines = 3,
-                maxLines = 12,
+                maxLines = 3,
             )
-            // 上下拖动这条把手可以改输入框高度。
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(20.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dragAmount ->
-                            heightDp = (heightDp + dragAmount / density.density).coerceIn(100f, 420f)
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(colorScheme.onSurfaceVariantSummary.copy(alpha = 0.35f)),
-                )
-            }
-        }
-    }
-
-    if (fullEditing) {
-        Dialog(
-            onDismissRequest = { fullEditing = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(colorScheme.surface)
-                    .padding(20.dp),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.broadcast_edit_full),
-                        fontSize = MiuixTheme.textStyles.title4.fontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurface,
-                    )
-                    TextField(
-                        value = draft,
-                        onValueChange = { draft = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        label = stringResource(R.string.broadcast_input_hint),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TextButton(
-                            text = stringResource(android.R.string.cancel),
-                            onClick = { fullEditing = false },
-                            modifier = Modifier.weight(1f),
-                        )
-                        Button(
-                            onClick = {
-                                actions.onTextChanged(draft)
-                                fullEditing = false
-                            },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.save),
-                                fontSize = MiuixTheme.textStyles.button.fontSize,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -473,6 +378,7 @@ private fun SendButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     var holdFired by remember { mutableStateOf(false) }
+    val accent = Color(0xFF0A84FF)
 
     // Releasing before the timeout cancels this effect, so only a real hold sends.
     LaunchedEffect(pressed) {
@@ -483,21 +389,29 @@ private fun SendButton(
         }
     }
 
-    Button(
-        onClick = {
-            when {
-                sending -> Unit
-                !longPress -> onSend()
-                holdFired -> holdFired = false
-                else -> onShortTap()
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-        enabled = !sending,
-        interactionSource = interactionSource,
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (sending) accent.copy(alpha = 0.45f) else accent)
+            .clickable(
+                enabled = !sending,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+            ) {
+                when {
+                    sending -> Unit
+                    !longPress -> onSend()
+                    holdFired -> holdFired = false
+                    else -> onShortTap()
+                }
+            },
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(if (sending) R.string.broadcast_sending else R.string.broadcast_send),
+            color = Color.White,
             fontSize = MiuixTheme.textStyles.button.fontSize,
             fontWeight = FontWeight.SemiBold,
         )
@@ -507,62 +421,80 @@ private fun SendButton(
 @Composable
 private fun SnapshotBlock(state: BroadcastUiState, actions: BroadcastActions) {
     val frame = state.snapshot
+    var expanded by rememberSaveable { mutableStateOf(true) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(R.string.broadcast_snapshot),
                 fontSize = MiuixTheme.textStyles.title4.fontSize,
                 fontWeight = FontWeight.SemiBold,
                 color = colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
-            // No empty box before the first capture: an unlabelled black rectangle reads as a bug.
-            if (frame != null) {
-                Spacer(Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .pointerInput(Unit) { detectTapGestures { actions.onOpenFullView() } },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        bitmap = frame.image,
-                        contentDescription = stringResource(R.string.broadcast_snapshot),
-                        modifier = Modifier.fillMaxWidth(),
-                        contentScale = ContentScale.FillWidth,
+            // 自动刷新时自己会抓，手动按钮就不出现了。
+            if (!state.autoRefreshSnapshot) {
+                IconButton(onClick = actions.onSnapshotClick) {
+                    Icon(
+                        imageVector = if (frame == null) Icons.Rounded.CameraAlt else Icons.Rounded.Refresh,
+                        contentDescription = stringResource(
+                            if (frame == null) R.string.broadcast_snapshot_refresh
+                            else R.string.broadcast_snapshot_refresh_again
+                        ),
+                        tint = colorScheme.primary,
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = null,
+                    tint = colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
+
+        if (expanded) {
+            if (frame != null) {
+                Image(
+                    bitmap = frame.image,
+                    contentDescription = stringResource(R.string.broadcast_snapshot),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .pointerInput(Unit) { detectTapGestures { actions.onOpenFullView() } },
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colorScheme.onSurfaceVariantSummary.copy(alpha = 0.12f))
+                        .clickable { actions.onSnapshotClick() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.broadcast_snapshot_idle),
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            }
             Text(
                 text = snapshotCaption(state),
                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                 color = colorScheme.onSurfaceVariantSummary,
-            )
-        }
-
-        // 自动刷新时每 2 秒自己抓一帧，手动按钮只会添乱。
-        if (!state.autoRefreshSnapshot) {
-            ArrowPreference(
-                title = stringResource(
-                    if (frame != null) R.string.broadcast_snapshot_refresh_again
-                    else R.string.broadcast_snapshot_refresh
-                ),
-                summary = stringResource(R.string.broadcast_snapshot_refresh_summary),
-                startAction = {
-                    Icon(
-                        Icons.Rounded.CameraAlt,
-                        modifier = Modifier.padding(end = 6.dp),
-                        contentDescription = null,
-                        tint = colorScheme.onBackground,
-                    )
-                },
-                onClick = actions.onSnapshotClick,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             )
         }
     }
