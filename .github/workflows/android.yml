@@ -52,22 +52,19 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
 
-      # 测试包用临时签名，只为了能装到手机上；正式发布换成自己的 keystore。
-      - name: Generate test keystore
+      # 固定签名，放在仓库 Secret 里；换签名会导致老用户无法覆盖安装。
+      - name: Restore keystore
         run: |
-          keytool -genkeypair -keystore test.jks -alias remotespeak \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass test123456 -keypass test123456 \
-            -dname "CN=RemoteSpeak Test"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/release.jks"
 
       - name: Build release APK
         working-directory: android
         run: |
           ./gradlew :app:assembleRelease --no-daemon \
-            -PKEYSTORE_FILE=$GITHUB_WORKSPACE/test.jks \
-            -PKEYSTORE_PASSWORD=test123456 \
-            -PKEY_ALIAS=remotespeak \
-            -PKEY_PASSWORD=test123456
+            -PKEYSTORE_FILE=$GITHUB_WORKSPACE/release.jks \
+            -PKEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -PKEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }} \
+            -PKEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
