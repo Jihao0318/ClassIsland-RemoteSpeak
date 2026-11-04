@@ -9,6 +9,9 @@ data class HomeUiState(
     val latestVersionInfo: LatestVersionInfo,
     val currentAppVersionCode: Long,
     val systemInfo: SystemInfo,
+    val downloading: Boolean = false,
+    val downloadProgress: Float = 0f,
+    val downloadError: String? = null,
 ) {
     val hasUpdate: Boolean
         get() = latestVersionInfo.versionCode > currentAppVersionCode
@@ -18,5 +21,6 @@ data class HomeUiState(
 data class HomeActions(
     val onServerStatusRefresh: () -> Unit,
     val onGoBroadcast: () -> Unit,
+    val onDownloadUpdate: () -> Unit,
     val onOpenUrl: (String) -> Unit,
 )

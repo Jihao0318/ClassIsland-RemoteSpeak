@@ -18,6 +18,8 @@ import com.remotebroadcast.ui.screen.home.SystemInfo
 import com.remotebroadcast.ui.screen.home.getAppVersion
 import com.remotebroadcast.ui.util.LatestVersionInfo
 import com.remotebroadcast.ui.util.checkNewVersion
+import com.remotebroadcast.ui.util.downloadApk
+import com.remotebroadcast.ui.util.installApk
 import com.remotebroadcast.ui.util.resolveDeviceName
 
 class HomeViewModel : ViewModel() {
@@ -25,6 +27,27 @@ class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(buildState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private var refreshJob: Job? = null
+
+    fun downloadUpdate() {
+        val info = _uiState.value.latestVersionInfo
+        if (info.downloadUrl.isEmpty() || _uiState.value.downloading) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(downloading = true, downloadProgress = 0f, downloadError = null) }
+            val file = withContext(Dispatchers.IO) {
+                downloadApk(info.downloadUrl) { progress ->
+                    _uiState.update { it.copy(downloadProgress = progress) }
+                }
+            }
+            _uiState.update { it.copy(downloading = false) }
+            if (file == null) {
+                _uiState.update { it.copy(downloadError = "更新包下载失败，请稍后再试") }
+                return@launch
+            }
+            runCatching { installApk(file) }
+                .onFailure { _uiState.update { it.copy(downloadError = "打不开安装器：${it.message}") } }
+        }
+    }
 
     fun refresh() {
         refreshJob?.cancel()

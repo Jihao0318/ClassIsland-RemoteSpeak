@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.remotebroadcast.R
 import com.remotebroadcast.ui.component.WarningLevel
-import com.remotebroadcast.ui.component.dialog.rememberConfirmDialog
 import com.remotebroadcast.ui.component.miuix.WarningCard
 import com.remotebroadcast.ui.screen.status.ServerStatusCard
 import com.remotebroadcast.ui.screen.status.ServerStatusDetails
@@ -135,30 +134,22 @@ fun HomePagerMiuix(
 @Composable
 private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
     val newVersion = state.latestVersionInfo
-    val title = stringResource(R.string.update_changelog)
-    val updateText = stringResource(R.string.update)
-    val updateDialog = rememberConfirmDialog(onConfirm = { actions.onOpenUrl(newVersion.downloadUrl) })
 
     AnimatedVisibility(
         visible = state.hasUpdate,
         enter = fadeIn() + expandVertically(),
         exit = shrinkVertically() + fadeOut(),
     ) {
+        val message = when {
+            state.downloading -> "正在下载更新… ${(state.downloadProgress * 100).toInt()}%"
+            state.downloadError != null -> state.downloadError
+            else -> stringResource(R.string.new_version_available, newVersion.versionCode)
+        }
+
         WarningCard(
-            message = stringResource(R.string.new_version_available, newVersion.versionCode),
-            level = WarningLevel.Notice,
-            onClick = {
-                if (newVersion.changelog.isEmpty()) {
-                    actions.onOpenUrl(newVersion.downloadUrl)
-                } else {
-                    updateDialog.showConfirm(
-                        title = title,
-                        content = newVersion.changelog,
-                        markdown = true,
-                        confirm = updateText,
-                    )
-                }
-            },
+            message = message,
+            level = if (state.downloadError != null) WarningLevel.Error else WarningLevel.Notice,
+            onClick = { if (!state.downloading) actions.onDownloadUpdate() },
         )
     }
 }

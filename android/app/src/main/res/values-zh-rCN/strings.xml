@@ -7,6 +7,8 @@
     <string name="settings">设置</string>
     <string name="about">关于</string>
     <string name="send_log">发送日志</string>
+    <string name="settings_check_update_now">立即检查更新</string>
+    <string name="settings_check_update_now_summary">手动检查一次有没有新版本</string>
     <string name="settings_check_update">检查更新</string>
     <string name="settings_check_update_summary">在应用启动后自动检查是否有最新版</string>
     <string name="new_version_available">发现新版本：%1$s，点击升级！</string>
@@ -111,7 +113,7 @@
     <string name="broadcast_notify_only_hint">这条 Token 只通知，不朗读</string>
     <string name="broadcast_mode_speak">语音播报</string>
     <string name="broadcast_mode_hint">不勾只弹提醒</string>
-    <string name="broadcast_view_only_hint">没有喊话权限，只能查看画面。点一下不再提示。</string>
+    <string name="broadcast_view_only_hint">没有喊话权限，只能查看画面。</string>
     <string name="broadcast_input_hint">输入要念的话</string>
     <string name="broadcast_input_label">播报内容</string>
     <string name="broadcast_url_unset">还没设置</string>

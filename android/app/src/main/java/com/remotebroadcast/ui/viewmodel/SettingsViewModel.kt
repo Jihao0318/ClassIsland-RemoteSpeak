@@ -15,7 +15,11 @@ import com.remotebroadcast.data.repository.SettingsRepository
 import com.remotebroadcast.data.repository.SettingsRepositoryImpl
 import com.remotebroadcast.ui.screen.broadcast.BroadcastTriggerMode
 import com.remotebroadcast.ui.screen.settings.SettingsUiState
+import com.remotebroadcast.BuildConfig
 import com.remotebroadcast.ui.theme.ColorMode
+import com.remotebroadcast.ui.util.checkNewVersion
+import com.remotebroadcast.ui.util.downloadApk
+import com.remotebroadcast.ui.util.installApk
 
 class SettingsViewModel(
     private val repo: SettingsRepository = SettingsRepositoryImpl()
@@ -79,6 +83,28 @@ class SettingsViewModel(
             if (outcome is BroadcastOutcome.Success) {
                 _uiState.update { it.copy(snapshotAllowed = outcome.value.snapshot) }
             }
+        }
+    }
+
+    fun checkUpdateNow() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(updateMessage = "正在检查…") }
+            val info = withContext(Dispatchers.IO) { checkNewVersion() }
+            if (info.versionCode <= BuildConfig.VERSION_CODE) {
+                _uiState.update { it.copy(updateMessage = "已经是最新版本") }
+                return@launch
+            }
+
+            _uiState.update { it.copy(updateMessage = "发现新版本 ${info.versionCode}，正在下载…") }
+            val file = withContext(Dispatchers.IO) { downloadApk(info.downloadUrl) {} }
+            if (file == null) {
+                _uiState.update { it.copy(updateMessage = "下载失败，请稍后再试") }
+                return@launch
+            }
+
+            _uiState.update { it.copy(updateMessage = null) }
+            runCatching { installApk(file) }
+                .onFailure { _uiState.update { it.copy(updateMessage = "打不开安装器：${it.message}") } }
         }
     }
 

@@ -26,6 +26,7 @@ fun SettingPager(
 
     val actions = SettingsScreenActions(
         onSetCheckUpdate = viewModel::setCheckUpdate,
+        onCheckUpdateNow = viewModel::checkUpdateNow,
         onOpenTheme = { navigator.push(Route.ColorPalette) },
         onOpenAbout = { navigator.push(Route.About) },
         onSetBroadcastUrl = viewModel::setBroadcastUrl,

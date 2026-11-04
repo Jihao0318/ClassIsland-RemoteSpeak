@@ -60,6 +60,7 @@ fun HomePager(
                 broadcastViewModel.refreshPermissions()
             }
         },
+        onDownloadUpdate = viewModel::downloadUpdate,
         onGoBroadcast = {
             mainPagerState.requestBroadcastFocus()
             mainPagerState.animateToPage(1)
