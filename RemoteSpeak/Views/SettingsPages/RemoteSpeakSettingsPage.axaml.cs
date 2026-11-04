@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using FluentAvalonia.UI.Controls;
 using ClassIsland.Core.Attributes;
 using ClassIsland.Core.Abstractions.Controls;
 using ClassIsland.Core.Enums.SettingsWindow;
@@ -75,18 +76,54 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
         ErrorTextBlock.IsVisible = State.LastError.Length > 0;
     }
 
-    private void ButtonAddToken_OnClick(object? sender, RoutedEventArgs e)
+    private async void ButtonAddToken_OnClick(object? sender, RoutedEventArgs e)
     {
+        var box = new TextBox
+        {
+            Text = $"Token {Settings.Tokens.Count + 1}",
+            Watermark = "Token 名称",
+            MinWidth = 260,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "新增 Token",
+            Content = box,
+            PrimaryButtonText = "添加",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var name = box.Text?.Trim();
         Settings.Tokens.Add(new ApiToken
         {
-            Name = $"Token {Settings.Tokens.Count + 1}",
+            Name = string.IsNullOrWhiteSpace(name) ? $"Token {Settings.Tokens.Count + 1}" : name,
             Value = ApiToken.NewValue(),
         });
     }
 
-    private void ButtonDeleteToken_OnClick(object? sender, RoutedEventArgs e)
+    private async void ButtonDeleteToken_OnClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button { DataContext: ApiToken token })
+        if (sender is not Button { DataContext: ApiToken token })
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "删除 Token",
+            Content = $"确定删除「{token.Name}」吗？删除后使用这个 Token 的调用方会立刻被拒绝。",
+            PrimaryButtonText = "删除",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
             Settings.Tokens.Remove(token);
         }
