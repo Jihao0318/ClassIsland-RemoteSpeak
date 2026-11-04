@@ -26,6 +26,7 @@ data class SettingsUiState(
     val broadcastRepeat: Int = BroadcastApi.MIN_REPEAT,
     val broadcastTriggerMode: Int = BroadcastTriggerMode.CONFIRM.value,
     val snapshotAutoRefresh: Boolean = false,
+    val snapshotAllowed: Boolean = true,
 )
 
 @Immutable

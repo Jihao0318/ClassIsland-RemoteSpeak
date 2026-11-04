@@ -365,14 +365,6 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
             onSend = ::requestSend,
             onShortTap = { releaseTooEarly = true },
         )
-        if (!state.permissions.speak) {
-            Text(
-                text = stringResource(R.string.broadcast_notify_only_hint),
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        }
         Text(
             text = stringResource(
                 if (state.sendsOnLongPress) R.string.broadcast_long_press_hint

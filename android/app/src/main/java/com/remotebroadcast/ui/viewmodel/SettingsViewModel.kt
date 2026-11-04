@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import com.remotebroadcast.data.remote.BroadcastApi
+import com.remotebroadcast.data.remote.BroadcastOutcome
 import com.remotebroadcast.data.repository.SettingsRepository
 import com.remotebroadcast.data.repository.SettingsRepositoryImpl
 import com.remotebroadcast.ui.screen.broadcast.BroadcastTriggerMode
@@ -67,6 +70,14 @@ class SettingsViewModel(
                     broadcastTriggerMode = broadcastTriggerMode,
                     snapshotAutoRefresh = snapshotAutoRefresh,
                 )
+            }
+
+            // 没有取景权限时，「画面自动刷新」要灰掉而不是消失。
+            val outcome = withContext(Dispatchers.IO) {
+                BroadcastApi.permissions(broadcastUrl, broadcastToken)
+            }
+            if (outcome is BroadcastOutcome.Success) {
+                _uiState.update { it.copy(snapshotAllowed = outcome.value.snapshot) }
             }
         }
     }

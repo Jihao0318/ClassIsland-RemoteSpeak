@@ -201,6 +201,7 @@ fun SettingPagerMiuix(
                         SwitchPreference(
                             title = stringResource(id = R.string.broadcast_settings_auto_refresh),
                             summary = stringResource(id = R.string.broadcast_settings_auto_refresh_summary),
+                            enabled = uiState.snapshotAllowed,
                             startAction = {
                                 Icon(
                                     Icons.Rounded.Videocam,
