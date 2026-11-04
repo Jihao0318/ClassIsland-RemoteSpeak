@@ -101,10 +101,10 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
 
     private NotificationRequest BuildRequest(string text, int times, SpeakOptions options)
     {
-        // 只通知的标题带上 Token 昵称，一眼能看出是谁在喊；没昵称就只写「只通知」。
-        var maskText = options.NotifyOnly
-            ? (string.IsNullOrWhiteSpace(options.TokenName) ? "只通知" : $"只通知：{options.TokenName}")
-            : _settings.MaskText;
+        // 标题统一是「遮罩文字：Token 昵称」，只通知只影响出不出声，不换标题。
+        var maskText = string.IsNullOrWhiteSpace(options.TokenName)
+            ? _settings.MaskText
+            : $"{_settings.MaskText}：{options.TokenName}";
 
         return new NotificationRequest
         {
