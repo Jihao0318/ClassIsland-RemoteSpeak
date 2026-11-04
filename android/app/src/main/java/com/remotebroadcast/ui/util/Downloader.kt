@@ -10,7 +10,6 @@ data class DownloadChannel(val name: String, val url: String)
 fun downloadChannels(url: String): List<DownloadChannel> = listOf(
     DownloadChannel("GitHub 直连", url),
     DownloadChannel("ghfast", "https://ghfast.top/$url"),
-    DownloadChannel("ghproxy", "https://ghproxy.net/$url"),
     DownloadChannel("gh-proxy", "https://gh-proxy.com/$url"),
 )
 

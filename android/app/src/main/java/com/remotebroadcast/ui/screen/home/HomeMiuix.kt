@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -65,6 +68,7 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -162,7 +166,9 @@ private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
     }
 
     if (showChannels) {
-        UpdateChannelDialog(
+        UpdateDialog(
+            changelog = newVersion.changelog,
+            versionCode = newVersion.versionCode,
             url = newVersion.downloadUrl,
             onDismiss = { showChannels = false },
             onOpen = { url ->
@@ -174,7 +180,9 @@ private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
 }
 
 @Composable
-private fun UpdateChannelDialog(
+private fun UpdateDialog(
+    changelog: String,
+    versionCode: Int,
     url: String,
     onDismiss: () -> Unit,
     onOpen: (String) -> Unit,
@@ -192,30 +200,67 @@ private fun UpdateChannelDialog(
         }
     }
 
+    // 测速只用来挑最快的，不再让用户选；全都失败时退回 GitHub 直连。
+    val bestUrl = channels.minByOrNull {
+        val ms = latency[it.name]
+        if (ms == null || ms < 0) Int.MAX_VALUE else ms
+    }?.url ?: url
+
     WindowDialog(
         show = true,
-        title = "选择下载渠道",
+        title = "发现新版本 $versionCode",
         onDismissRequest = onDismiss,
         content = {
             Column {
-                channels.forEach { channel ->
-                    val ms = latency[channel.name]
-                    ArrowPreference(
-                        title = channel.name,
-                        summary = when {
-                            ms == null -> "测速中…"
-                            ms < 0 -> "连接失败"
-                            else -> "$ms ms"
-                        },
-                        onClick = { onOpen(channel.url) },
+                if (changelog.isNotBlank()) {
+                    Text(
+                        text = changelog,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = colorScheme.onSurface,
+                        modifier = Modifier
+                            .heightIn(max = 260.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 8.dp),
                     )
                 }
-                Text(
-                    text = "选一个渠道后用浏览器打开下载",
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    color = colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+
+                channels.forEach { channel ->
+                    val ms = latency[channel.name]
+                    Text(
+                        text = buildString {
+                            append(channel.name)
+                            append("  ")
+                            append(
+                                when {
+                                    ms == null -> "测速中…"
+                                    ms < 0 -> "连接失败"
+                                    else -> "$ms ms"
+                                }
+                            )
+                        },
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(
+                        text = "取消",
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        text = "下载",
+                        onClick = { onOpen(bestUrl) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         },
     )
