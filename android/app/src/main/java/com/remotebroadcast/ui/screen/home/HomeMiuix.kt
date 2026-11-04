@@ -27,6 +27,13 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +45,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.remotebroadcast.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.remotebroadcast.ui.component.WarningLevel
 import com.remotebroadcast.ui.component.miuix.WarningCard
 import com.remotebroadcast.ui.screen.status.ServerStatusCard
@@ -45,6 +55,8 @@ import com.remotebroadcast.ui.screen.status.ServerStatusDetails
 import com.remotebroadcast.ui.screen.status.ServerStatusUiState
 import com.remotebroadcast.ui.theme.LocalEnableBlur
 import com.remotebroadcast.ui.util.BlurredBar
+import com.remotebroadcast.ui.util.downloadChannels
+import com.remotebroadcast.ui.util.measureLatency
 import com.remotebroadcast.ui.util.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -59,6 +71,7 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -134,24 +147,78 @@ fun HomePagerMiuix(
 @Composable
 private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
     val newVersion = state.latestVersionInfo
+    var showChannels by rememberSaveable { mutableStateOf(false) }
 
     AnimatedVisibility(
         visible = state.hasUpdate,
         enter = fadeIn() + expandVertically(),
         exit = shrinkVertically() + fadeOut(),
     ) {
-        val message = when {
-            state.downloading -> "正在下载更新… ${(state.downloadProgress * 100).toInt()}%"
-            state.downloadError != null -> state.downloadError
-            else -> stringResource(R.string.new_version_available, newVersion.versionCode)
-        }
-
         WarningCard(
-            message = message,
-            level = if (state.downloadError != null) WarningLevel.Error else WarningLevel.Notice,
-            onClick = { if (!state.downloading) actions.onDownloadUpdate() },
+            message = stringResource(R.string.new_version_available, newVersion.versionCode),
+            level = WarningLevel.Notice,
+            onClick = { showChannels = true },
         )
     }
+
+    if (showChannels) {
+        UpdateChannelDialog(
+            url = newVersion.downloadUrl,
+            onDismiss = { showChannels = false },
+            onOpen = { url ->
+                showChannels = false
+                actions.onOpenUrl(url)
+            },
+        )
+    }
+}
+
+@Composable
+private fun UpdateChannelDialog(
+    url: String,
+    onDismiss: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    val channels = remember(url) { downloadChannels(url) }
+    val latency = remember(url) { mutableStateMapOf<String, Int>() }
+
+    LaunchedEffect(url) {
+        channels.forEach { channel ->
+            launch {
+                latency[channel.name] = withContext(Dispatchers.IO) {
+                    measureLatency(channel.url)
+                }
+            }
+        }
+    }
+
+    WindowDialog(
+        show = true,
+        title = "选择下载渠道",
+        onDismissRequest = onDismiss,
+        content = {
+            Column {
+                channels.forEach { channel ->
+                    val ms = latency[channel.name]
+                    ArrowPreference(
+                        title = channel.name,
+                        summary = when {
+                            ms == null -> "测速中…"
+                            ms < 0 -> "连接失败"
+                            else -> "$ms ms"
+                        },
+                        onClick = { onOpen(channel.url) },
+                    )
+                }
+                Text(
+                    text = "选一个渠道后用浏览器打开下载",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        },
+    )
 }
 
 @Composable
