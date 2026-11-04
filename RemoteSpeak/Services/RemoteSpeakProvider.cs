@@ -131,6 +131,8 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
                 // 画面上还是原文那一句，只有朗读文本按遍数重复——
                 // NotificationContent 的显示文本（模板里的 Text）和 SpeechContent 是两个字段。
                 content.IsSpeechEnabled = !notifyOnly;
-                content.SpeechContent = notifyOnly ? text : SpeakScript.SpeechText(text, times);
+                // 只通知时连朗读文本一起清空：有些宿主只看 SpeechContent 非空就念，
+                // 光把 IsSpeechEnabled 置 false 不一定拦得住。
+                content.SpeechContent = notifyOnly ? string.Empty : SpeakScript.SpeechText(text, times);
             });
 }
