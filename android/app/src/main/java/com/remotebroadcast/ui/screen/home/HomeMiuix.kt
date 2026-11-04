@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.remotebroadcast.ui.component.WarningLevel
+import com.remotebroadcast.ui.component.dialog.rememberConfirmDialog
 import com.remotebroadcast.ui.component.miuix.WarningCard
 import com.remotebroadcast.ui.screen.status.ServerStatusCard
 import com.remotebroadcast.ui.screen.status.ServerStatusDetails
@@ -151,7 +153,24 @@ fun HomePagerMiuix(
 @Composable
 private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
     val newVersion = state.latestVersionInfo
-    var showChannels by rememberSaveable { mutableStateOf(false) }
+    val title = stringResource(R.string.update_changelog)
+    val updateText = stringResource(R.string.update)
+    val scope = rememberCoroutineScope()
+
+    // 确认后在后台测速，选最快的渠道用浏览器打开，不再把渠道列表摆出来。
+    val dialog = rememberConfirmDialog(onConfirm = {
+        scope.launch {
+            val best = withContext(Dispatchers.IO) {
+                downloadChannels(newVersion.downloadUrl)
+                    .map { it to measureLatency(it.url) }
+                    .filter { it.second > 0 }
+                    .minByOrNull { it.second }
+                    ?.first
+                    ?: downloadChannels(newVersion.downloadUrl).first()
+            }
+            actions.onOpenUrl(best.url)
+        }
+    })
 
     AnimatedVisibility(
         visible = state.hasUpdate,
@@ -161,109 +180,20 @@ private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
         WarningCard(
             message = stringResource(R.string.new_version_available, newVersion.versionCode),
             level = WarningLevel.Notice,
-            onClick = { showChannels = true },
-        )
-    }
-
-    if (showChannels) {
-        UpdateDialog(
-            changelog = newVersion.changelog,
-            versionCode = newVersion.versionCode,
-            url = newVersion.downloadUrl,
-            onDismiss = { showChannels = false },
-            onOpen = { url ->
-                showChannels = false
-                actions.onOpenUrl(url)
+            onClick = {
+                if (newVersion.changelog.isEmpty()) {
+                    actions.onOpenUrl(newVersion.downloadUrl)
+                } else {
+                    dialog.showConfirm(
+                        title = title,
+                        content = newVersion.changelog,
+                        markdown = true,
+                        confirm = updateText,
+                    )
+                }
             },
         )
     }
-}
-
-@Composable
-private fun UpdateDialog(
-    changelog: String,
-    versionCode: Int,
-    url: String,
-    onDismiss: () -> Unit,
-    onOpen: (String) -> Unit,
-) {
-    val channels = remember(url) { downloadChannels(url) }
-    val latency = remember(url) { mutableStateMapOf<String, Int>() }
-
-    LaunchedEffect(url) {
-        channels.forEach { channel ->
-            launch {
-                latency[channel.name] = withContext(Dispatchers.IO) {
-                    measureLatency(channel.url)
-                }
-            }
-        }
-    }
-
-    // 测速只用来挑最快的，不再让用户选；全都失败时退回 GitHub 直连。
-    val bestUrl = channels.minByOrNull {
-        val ms = latency[it.name]
-        if (ms == null || ms < 0) Int.MAX_VALUE else ms
-    }?.url ?: url
-
-    WindowDialog(
-        show = true,
-        title = "发现新版本 $versionCode",
-        onDismissRequest = onDismiss,
-        content = {
-            Column {
-                if (changelog.isNotBlank()) {
-                    Text(
-                        text = changelog,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = colorScheme.onSurface,
-                        modifier = Modifier
-                            .heightIn(max = 260.dp)
-                            .verticalScroll(rememberScrollState())
-                            .padding(bottom = 8.dp),
-                    )
-                }
-
-                channels.forEach { channel ->
-                    val ms = latency[channel.name]
-                    Text(
-                        text = buildString {
-                            append(channel.name)
-                            append("  ")
-                            append(
-                                when {
-                                    ms == null -> "测速中…"
-                                    ms < 0 -> "连接失败"
-                                    else -> "$ms ms"
-                                }
-                            )
-                        },
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = colorScheme.onSurfaceVariantSummary,
-                        modifier = Modifier.padding(vertical = 2.dp),
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    TextButton(
-                        text = "取消",
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(
-                        text = "下载",
-                        onClick = { onOpen(bestUrl) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        },
-    )
 }
 
 @Composable
