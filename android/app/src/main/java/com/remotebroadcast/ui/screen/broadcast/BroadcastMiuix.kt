@@ -152,18 +152,20 @@ fun BroadcastPagerMiuix(
                                     onClick = onOpenSettings,
                                 )
                             }
-                            if (!state.permissions.canBroadcast) {
+                            // 取景和播报各算各的：只有取景权限就只看画面，不弹「没有播报权限」。
+                            if (state.permissions.snapshot) {
+                                SnapshotBlock(state, actions)
+                            }
+
+                            if (state.permissions.canBroadcast) {
+                                SendStatusBanner(state.sendStatus)
+                                InputBlock(state, actions, focusRequester)
+                                SendBlock(state, actions)
+                            } else if (!state.permissions.snapshot) {
                                 WarningCard(
                                     message = stringResource(R.string.broadcast_no_permission),
                                     level = WarningLevel.Error,
                                 )
-                            } else {
-                                SendStatusBanner(state.sendStatus)
-                                if (state.permissions.snapshot) {
-                                    SnapshotBlock(state, actions)
-                                }
-                                InputBlock(state, actions, focusRequester)
-                                SendBlock(state, actions)
                             }
                         }
                     }

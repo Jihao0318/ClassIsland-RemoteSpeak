@@ -108,7 +108,7 @@
     <string name="broadcast_snapshot_refresh_again">Refresh</string>
     <string name="broadcast_edit_full">Full-screen editor</string>
     <string name="home_go_broadcast">Go to broadcast</string>
-    <string name="broadcast_no_permission">This token cannot broadcast</string>
+    <string name="broadcast_no_permission">This token has no usable permission</string>
     <string name="broadcast_notify_only_hint">This token only shows the notification, no speech</string>
     <string name="broadcast_mode_speak">Read aloud</string>
     <string name="broadcast_mode_hint">Uncheck to show the notice only</string>
