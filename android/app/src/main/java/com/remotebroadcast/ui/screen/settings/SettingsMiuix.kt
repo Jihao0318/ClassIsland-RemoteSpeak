@@ -20,7 +20,6 @@ import androidx.compose.material.icons.rounded.ContactPage
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.TipsAndUpdates
 import androidx.compose.material.icons.rounded.Update
 import androidx.compose.material.icons.rounded.Videocam
@@ -120,20 +119,6 @@ fun SettingPagerMiuix(
                             },
                             checked = uiState.checkUpdate,
                             onCheckedChange = actions.onSetCheckUpdate
-                        )
-                        ArrowPreference(
-                            title = stringResource(id = R.string.settings_check_update_now),
-                            summary = uiState.updateMessage
-                                ?: stringResource(id = R.string.settings_check_update_now_summary),
-                            startAction = {
-                                Icon(
-                                    Icons.Rounded.Refresh,
-                                    modifier = Modifier.padding(end = 6.dp),
-                                    contentDescription = stringResource(id = R.string.settings_check_update_now),
-                                    tint = colorScheme.onBackground
-                                )
-                            },
-                            onClick = actions.onCheckUpdateNow
                         )
                     }
 

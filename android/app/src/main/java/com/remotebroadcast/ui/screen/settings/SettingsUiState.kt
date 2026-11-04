@@ -27,13 +27,11 @@ data class SettingsUiState(
     val broadcastTriggerMode: Int = BroadcastTriggerMode.CONFIRM.value,
     val snapshotAutoRefresh: Boolean = false,
     val snapshotAllowed: Boolean = true,
-    val updateMessage: String? = null,
 )
 
 @Immutable
 data class SettingsScreenActions(
     val onSetCheckUpdate: (Boolean) -> Unit,
-    val onCheckUpdateNow: () -> Unit,
     val onOpenTheme: () -> Unit,
     val onOpenAbout: () -> Unit,
     val onSetBroadcastUrl: (String) -> Unit,
