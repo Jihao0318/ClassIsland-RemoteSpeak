@@ -88,11 +88,10 @@ class SettingsViewModel(
 
     fun setDownloadChannelIndex(index: Int) {
         val value = when (index) {
-            1 -> "github"
-            2 -> "ghfast"
-            3 -> "gh-proxy"
-            4 -> "custom"
-            else -> "auto"
+            1 -> "ghfast"
+            2 -> "gh-proxy"
+            3 -> "custom"
+            else -> "github"
         }
         repo.downloadChannel = value
         _uiState.update { it.copy(downloadChannel = value) }

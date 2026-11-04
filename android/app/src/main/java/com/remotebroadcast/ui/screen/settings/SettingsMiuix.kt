@@ -125,7 +125,7 @@ fun SettingPagerMiuix(
                         OverlayDropdownPreference(
                             title = stringResource(id = R.string.settings_download_channel),
                             summary = stringResource(id = R.string.settings_download_channel_summary),
-                            items = listOf("自动（测速选最快）", "GitHub 直连", "ghfast", "gh-proxy", "自定义"),
+                            items = listOf("GitHub 直连", "ghfast", "gh-proxy", "自定义"),
                             startAction = {
                                 Icon(
                                     Icons.Rounded.CloudDownload,
@@ -135,10 +135,9 @@ fun SettingPagerMiuix(
                                 )
                             },
                             selectedIndex = when (uiState.downloadChannel) {
-                                "github" -> 1
-                                "ghfast" -> 2
-                                "gh-proxy" -> 3
-                                "custom" -> 4
+                                "ghfast" -> 1
+                                "gh-proxy" -> 2
+                                "custom" -> 3
                                 else -> 0
                             },
                             onSelectedIndexChange = actions.onSetDownloadChannelIndex

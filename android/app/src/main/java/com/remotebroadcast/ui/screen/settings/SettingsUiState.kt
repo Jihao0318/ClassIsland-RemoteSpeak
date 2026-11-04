@@ -27,7 +27,7 @@ data class SettingsUiState(
     val broadcastTriggerMode: Int = BroadcastTriggerMode.CONFIRM.value,
     val snapshotAutoRefresh: Boolean = false,
     val snapshotAllowed: Boolean = true,
-    val downloadChannel: String = "auto",
+    val downloadChannel: String = "github",
     val downloadChannelCustom: String = "",
 )
 

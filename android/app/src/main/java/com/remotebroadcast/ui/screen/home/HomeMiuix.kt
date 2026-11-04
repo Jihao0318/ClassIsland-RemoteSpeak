@@ -35,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,7 +60,6 @@ import com.remotebroadcast.ui.screen.status.ServerStatusUiState
 import com.remotebroadcast.ui.theme.LocalEnableBlur
 import com.remotebroadcast.ui.util.BlurredBar
 import com.remotebroadcast.ui.util.downloadChannels
-import com.remotebroadcast.ui.util.measureLatency
 import com.remotebroadcast.ui.util.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -155,21 +153,10 @@ private fun UpdateCard(state: HomeUiState, actions: HomeActions) {
     val newVersion = state.latestVersionInfo
     val title = stringResource(R.string.update_changelog)
     val updateText = stringResource(R.string.update)
-    val scope = rememberCoroutineScope()
 
-    // 确认后在后台测速，选最快的渠道用浏览器打开，不再把渠道列表摆出来。
+    // 按设置里选的渠道直接打开，不再测速。
     val dialog = rememberConfirmDialog(onConfirm = {
-        scope.launch {
-            val best = withContext(Dispatchers.IO) {
-                downloadChannels(newVersion.downloadUrl)
-                    .map { it to measureLatency(it.url) }
-                    .filter { it.second > 0 }
-                    .minByOrNull { it.second }
-                    ?.first
-                    ?: downloadChannels(newVersion.downloadUrl).first()
-            }
-            actions.onOpenUrl(best.url)
-        }
+        actions.onOpenUrl(downloadChannels(newVersion.downloadUrl).first().url)
     })
 
     AnimatedVisibility(

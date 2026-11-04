@@ -12,7 +12,7 @@
     <string name="about">About</string>
     <string name="send_log">Send logs</string>
     <string name="settings_download_channel">Download channel</string>
-    <string name="settings_download_channel_summary">Which mirror to use for updates; Auto picks the fastest</string>
+    <string name="settings_download_channel_summary">Which mirror to use for updates</string>
     <string name="settings_download_channel_custom">Custom prefix</string>
     <string name="settings_download_channel_custom_summary">Prepended to the original URL, e.g. https://example.com/</string>
     <string name="settings_check_update">Check for updates</string>

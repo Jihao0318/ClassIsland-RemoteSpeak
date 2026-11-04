@@ -97,7 +97,7 @@ class SettingsRepositoryImpl : SettingsRepository {
         set(value) = prefs.edit { putBoolean("hide_view_only_hint", value) }
 
     override var downloadChannel: String
-        get() = prefs.getString("download_channel", "auto") ?: "auto"
+        get() = prefs.getString("download_channel", "github") ?: "github"
         set(value) = prefs.edit { putString("download_channel", value) }
 
     override var downloadChannelCustom: String
