@@ -56,34 +56,35 @@ fun connectionHeadline(state: ServerStatusUiState): String = stringResource(
     }
 )
 
-private data class StatusPalette(val container: Color, val icon: Color, val text: Color)
+private data class StatusPalette(val container: Color, val icon: Color)
 
+/**
+ * 颜色一比一照 KernelSU 的 StatusCard：
+ * 动态取色用 secondaryContainer，静态回到原来那套绿；文字不单独指定，交给 Card 默认。
+ */
 @Composable
 private fun statusPalette(status: ConnectionStatus): StatusPalette? {
     val dynamic = isDynamicColor
     val dark = isInDarkTheme()
 
     return when (status) {
-        // 开了 Monet 就跟主题容器色走；没开就回到原来的绿/红，别把静态配色也改掉。
-        ConnectionStatus.ONLINE -> when {
-            dynamic -> StatusPalette(
-                container = colorScheme.secondaryContainer,
-                icon = colorScheme.primary,
-                text = colorScheme.onSecondaryContainer,
-            )
-            dark -> StatusPalette(Color(0xFF12381C), Color(0xFF36D167), Color(0xFFB7F7C6))
-            else -> StatusPalette(Color(0xFFDFFAE4), Color(0xFF36D167), Color(0xFF111111))
-        }
+        ConnectionStatus.ONLINE -> StatusPalette(
+            container = when {
+                dynamic -> colorScheme.secondaryContainer
+                dark -> Color(0xFF1A3825)
+                else -> Color(0xFFDFFAE4)
+            },
+            icon = if (dynamic) colorScheme.primary.copy(alpha = 0.8f) else Color(0xFF36D167),
+        )
 
-        ConnectionStatus.OFFLINE -> when {
-            dynamic -> StatusPalette(
-                container = colorScheme.errorContainer,
-                icon = colorScheme.error,
-                text = colorScheme.onErrorContainer,
-            )
-            dark -> StatusPalette(Color(0xFF310808), Color(0xFFF72727), Color(0xFFF2B8B5))
-            else -> StatusPalette(Color(0xFFF8E2E2), Color(0xFFF72727), Color(0xFF111111))
-        }
+        ConnectionStatus.OFFLINE -> StatusPalette(
+            container = when {
+                dynamic -> colorScheme.errorContainer
+                dark -> Color(0xFF310808)
+                else -> Color(0xFFF8E2E2)
+            },
+            icon = if (dynamic) colorScheme.error.copy(alpha = 0.8f) else Color(0xFFF72727),
+        )
 
         else -> null
     }
@@ -106,11 +107,11 @@ fun ServerStatusCard(
 ) {
     val palette = statusPalette(state.connection)
     val container = palette?.container ?: MiuixTheme.colorScheme.surface
-    val text = palette?.text ?: MiuixTheme.colorScheme.onSurface
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.defaultColors(color = container, contentColor = text),
+        // contentColor 不传，和 KernelSU 一样用 Card 的默认前景色。
+        colors = CardDefaults.defaultColors(color = container),
         onClick = onClick,
         showIndication = true,
         pressFeedbackType = PressFeedbackType.Tilt,
@@ -140,13 +141,11 @@ fun ServerStatusCard(
                         text = connectionHeadline(state),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = text,
                     )
                     Spacer(Modifier.height(1.dp))
                     Text(
                         text = version,
                         fontSize = 15.sp,
-                        color = text,
                     )
                 }
             }
