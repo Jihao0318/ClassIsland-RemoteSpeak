@@ -328,6 +328,12 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
+            if (path == "/permissions")
+            {
+                await HandlePermissionsAsync(request, response).ConfigureAwait(false);
+                return;
+            }
+
             if (path == "/snapshot")
             {
                 await HandleSnapshotAsync(request, response, cancellationToken).ConfigureAwait(false);
@@ -346,14 +352,14 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
-            var speakToken = CheckToken(request, needSpeak: true, needSnapshot: false);
+            var speakToken = CheckToken(request, needNotify: true, needSpeak: false, needSnapshot: false);
             if (!speakToken.Accepted)
             {
                 await FailAsync(
                     request,
                     response,
                     speakToken.Forbidden ? HttpStatusCode.Forbidden : HttpStatusCode.Unauthorized,
-                    speakToken.Forbidden ? "这个 Token 没有播报权限" : "Token 不对").ConfigureAwait(false);
+                    speakToken.Forbidden ? "这个 Token 没有通知权限" : "Token 不对").ConfigureAwait(false);
                 return;
             }
 
@@ -383,7 +389,7 @@ public sealed class RemoteSpeakServer : IDisposable
             }
 
             var options = new SpeakOptions(
-                NotifyOnly: speakToken.Token?.NotifyOnly ?? false,
+                NotifyOnly: !(speakToken.Token?.AllowSpeak ?? true),
                 TokenName: speakToken.Token?.Name ?? "");
             if (!await _onText(payload.Text, payload.Repeat, options).ConfigureAwait(false))
             {
@@ -444,7 +450,7 @@ public sealed class RemoteSpeakServer : IDisposable
             return;
         }
 
-        var snapshotToken = CheckToken(request, needSpeak: false, needSnapshot: true);
+        var snapshotToken = CheckToken(request, needNotify: false, needSpeak: false, needSnapshot: true);
         if (!snapshotToken.Accepted)
         {
             await FailAsync(
@@ -527,7 +533,11 @@ public sealed class RemoteSpeakServer : IDisposable
     /// 没启用任何 token 时整台本机都不校验（和旧版「Token 留空」一致）；
     /// 一旦有启用的 token，就必须带对，而且得有所需权限。
     /// </summary>
-    private TokenCheck CheckToken(HttpListenerRequest request, bool needSpeak, bool needSnapshot)
+    private TokenCheck CheckToken(
+        HttpListenerRequest request,
+        bool needNotify,
+        bool needSpeak,
+        bool needSnapshot)
     {
         var active = _tokens.Where(t => t.Enabled && t.Value.Length > 0).ToList();
         if (active.Count == 0)
@@ -542,12 +552,40 @@ public sealed class RemoteSpeakServer : IDisposable
             return new TokenCheck(null, false, false);
         }
 
-        if ((needSpeak && !token.AllowSpeak) || (needSnapshot && !token.AllowSnapshot))
+        // 能朗读就默认能弹通知；这里再兜一层，防止手改配置文件把通知关掉。
+        if ((needNotify && !(token.AllowNotify || token.AllowSpeak))
+            || (needSpeak && !token.AllowSpeak)
+            || (needSnapshot && !token.AllowSnapshot))
         {
             return new TokenCheck(token, false, true);
         }
 
         return new TokenCheck(token, true, false);
+    }
+
+    /// <summary>
+    /// 让调用方先问清楚这条 Token 能干什么；APP 靠它决定显示哪些卡片。
+    /// 只要 Token 有效就回 200，权限不够就把对应字段置 false。
+    /// </summary>
+    private async Task HandlePermissionsAsync(HttpListenerRequest request, HttpListenerResponse response)
+    {
+        var check = CheckToken(request, needNotify: false, needSpeak: false, needSnapshot: false);
+        if (!check.Accepted)
+        {
+            await FailAsync(request, response, HttpStatusCode.Unauthorized, "Token 不对").ConfigureAwait(false);
+            return;
+        }
+
+        var token = check.Token;
+        var json = JsonSerializer.Serialize(new
+        {
+            ok = true,
+            name = token?.Name ?? "",
+            notify = token?.AllowNotify ?? true,
+            speak = token?.AllowSpeak ?? true,
+            snapshot = token?.AllowSnapshot ?? true,
+        });
+        await WriteAsync(response, HttpStatusCode.OK, json).ConfigureAwait(false);
     }
 
     /// <summary>读 body 并解析；body 超限返回 null，格式不对或空白按老规矩交空文本。</summary>

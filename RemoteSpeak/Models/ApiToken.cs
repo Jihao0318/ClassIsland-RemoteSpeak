@@ -26,7 +26,11 @@ public sealed partial class ApiToken : ObservableObject
     [ObservableProperty]
     private string _value = "";
 
-    /// <summary>是否允许 POST /speak。</summary>
+    /// <summary>是否允许 POST /speak 弹出提醒。</summary>
+    [ObservableProperty]
+    private bool _allowNotify = true;
+
+    /// <summary>是否允许朗读；关掉后 /speak 只弹提醒，不出声。</summary>
     [ObservableProperty]
     private bool _allowSpeak = true;
 
@@ -34,7 +38,7 @@ public sealed partial class ApiToken : ObservableObject
     [ObservableProperty]
     private bool _allowSnapshot = true;
 
-    /// <summary>只弹提醒，不朗读。</summary>
+    /// <summary>旧版「只通知不朗读」字段，只在迁移时读一次，之后恒为 false。</summary>
     [ObservableProperty]
     private bool _notifyOnly;
 

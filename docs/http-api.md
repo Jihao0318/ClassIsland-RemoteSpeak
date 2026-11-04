@@ -7,6 +7,7 @@
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/health`、`/` | 探活，不校验 Token |
+| `GET` | `/permissions` | 查当前 Token 有哪些权限 |
 | `POST` | `/speak` | 播报 |
 | `GET` | `/snapshot` | 取一帧本机摄像头画面（JPEG），默认关闭 |
 | `OPTIONS` | 任意 | CORS 预检，返回 `204` |
@@ -33,9 +34,9 @@
 
 | 权限 | 作用 |
 | --- | --- |
-| 允许播报 | 能用 `POST /speak` |
-| 允许取景 | 能用 `GET /snapshot` |
-| 只通知不朗读 | 播报只弹画面、不出声，标题显示「只通知：Token 昵称」 |
+| 通知 | 能用 `POST /speak` 弹出提醒 |
+| 朗读 | 朗读正文；关掉后 `POST /speak` 只弹提醒、不出声 |
+| 取景 | 能用 `GET /snapshot` |
 
 请求带上那条 Token 的值：
 
@@ -47,6 +48,12 @@ X-Token: 你的Token
 - Token 不存在：`401`
 - Token 存在但没有对应权限：`403`
 - `GET /health` 永远不校验
+
+`GET /permissions` 用同样的 `X-Token` 查当前 Token 的能力：
+
+```json
+{ "ok": true, "name": "互动页", "notify": true, "speak": false, "snapshot": false }
+```
 
 Token 只做本机防误触，不是安全边界——服务本身只监听环回地址。设置页会显示每条 Token 的今日播报次数、取景次数和最后使用时间。
 

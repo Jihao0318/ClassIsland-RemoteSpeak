@@ -62,12 +62,12 @@
                                  Header="访问 Token"
                                  Description="每条 Token 可以单独控制能否播报、能否取景、是否只通知不朗读。没有启用的 Token 时不校验。">
                 <StackPanel Spacing="8" Margin="0,8,0,0">
-                    <Grid ColumnDefinitions="150,*,56,56,72,170,110">
+                    <Grid ColumnDefinitions="150,*,56,56,56,170,110">
                         <TextBlock Grid.Column="0" Text="名称" FontSize="12" Opacity="0.6" />
                         <TextBlock Grid.Column="1" Text="Token" FontSize="12" Opacity="0.6" />
-                        <TextBlock Grid.Column="2" Text="播报" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="取景" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
-                        <TextBlock Grid.Column="4" Text="只通知" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="通知" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="朗读" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="取景" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
                         <TextBlock Grid.Column="5" Text="使用情况" FontSize="12" Opacity="0.6" />
                         <TextBlock Grid.Column="6" Text="操作" FontSize="12" Opacity="0.6" />
                     </Grid>
@@ -75,7 +75,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Spacing="6" Margin="0,4,0,0">
-                                    <Grid ColumnDefinitions="150,*,56,56,72,170,110" VerticalAlignment="Center">
+                                    <Grid ColumnDefinitions="150,*,56,56,56,170,110" VerticalAlignment="Center">
                                         <TextBox Grid.Column="0" Margin="0,0,8,0"
                                                  Text="{Binding Name, Mode=TwoWay}"
                                                  Watermark="名称" />
@@ -86,11 +86,11 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"
                                                    Opacity="0.75" />
-                                        <CheckBox Grid.Column="2" IsChecked="{Binding AllowSpeak, Mode=TwoWay}"
+                                        <CheckBox Grid.Column="2" IsChecked="{Binding AllowNotify, Mode=TwoWay}"
                                                   HorizontalAlignment="Center" />
-                                        <CheckBox Grid.Column="3" IsChecked="{Binding AllowSnapshot, Mode=TwoWay}"
+                                        <CheckBox Grid.Column="3" IsChecked="{Binding AllowSpeak, Mode=TwoWay}"
                                                   HorizontalAlignment="Center" />
-                                        <CheckBox Grid.Column="4" IsChecked="{Binding NotifyOnly, Mode=TwoWay}"
+                                        <CheckBox Grid.Column="4" IsChecked="{Binding AllowSnapshot, Mode=TwoWay}"
                                                   HorizontalAlignment="Center" />
                                         <TextBlock Grid.Column="5" Margin="0,0,8,0"
                                                    Text="{Binding UsageText}"
@@ -235,11 +235,11 @@
             <!-- ===== 接口 ===== -->
             <fa:SettingsExpander IconSource="{ci:FluentIconSource &#xE61C;}"
                                  Header="接口"
-                                 Description="GET /health 探活，POST /speak 播报，GET /snapshot 取景（默认关），OPTIONS 预检已放行。">
+                                 Description="GET /health 探活，GET /permissions 查权限，POST /speak 播报，GET /snapshot 取景（默认关），OPTIONS 预检已放行。">
                 <StackPanel Spacing="10" Margin="0,8,0,0">
 
-                    <TextBlock Text="四个接口" FontSize="13" FontWeight="SemiBold" />
-                    <Grid ColumnDefinitions="72,124,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Text="五个接口" FontSize="13" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="72,124,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="GET" FontSize="12" Opacity="0.75" />
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="/health" FontSize="12" />
                         <TextBlock Grid.Row="0" Grid.Column="2" Text="探活，回 { &quot;ok&quot;: true, &quot;name&quot;: &quot;远程播报&quot; }；不校验 Token"
@@ -249,12 +249,16 @@
                         <TextBlock Grid.Row="1" Grid.Column="2" Text="播报。body 是 JSON：{ &quot;text&quot;: &quot;要被朗读的文本&quot;, &quot;repeat&quot;: 3 }；repeat 可选，1-5"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,4,0,0" />
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="GET" FontSize="12" Opacity="0.75" Margin="0,8,0,0" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="/snapshot" FontSize="12" Margin="0,8,0,0" />
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="取景，回一帧 image/jpeg；要先在「摄像头取景」里打开"
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="/permissions" FontSize="12" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="查这条 Token 能做什么：回 { &quot;notify&quot;: true, &quot;speak&quot;: true, &quot;snapshot&quot;: false }"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="OPTIONS" FontSize="12" Opacity="0.75" Margin="0,12,0,0" />
-                        <TextBlock Grid.Row="3" Grid.Column="1" Text="任意路径" FontSize="12" Margin="0,12,0,0" />
-                        <TextBlock Grid.Row="3" Grid.Column="2" Text="CORS 预检，回 204；已放行所有来源与 X-Token 头"
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="GET" FontSize="12" Opacity="0.75" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="/snapshot" FontSize="12" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="取景，回一帧 image/jpeg；要先在「摄像头取景」里打开"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="OPTIONS" FontSize="12" Opacity="0.75" Margin="0,12,0,0" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="任意路径" FontSize="12" Margin="0,12,0,0" />
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="CORS 预检，回 204；已放行所有来源与 X-Token 头"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,12,0,0" />
                     </Grid>
 

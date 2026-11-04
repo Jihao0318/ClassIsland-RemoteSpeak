@@ -145,6 +145,19 @@ public partial class Settings : ObservableObject
             {
                 token.Id = Guid.NewGuid().ToString("N");
             }
+
+            if (token.NotifyOnly)
+            {
+                token.AllowNotify = true;
+                token.AllowSpeak = false;
+                token.NotifyOnly = false;
+            }
+
+            // 能朗读就必然要弹提醒，通知权限不能落下。
+            if (token.AllowSpeak)
+            {
+                token.AllowNotify = true;
+            }
         }
     }
 
