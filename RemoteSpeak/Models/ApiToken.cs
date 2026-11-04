@@ -33,6 +33,10 @@ public sealed partial class ApiToken : ObservableObject
     [ObservableProperty]
     private bool _allowSnapshot = true;
 
+    /// <summary>只弹提醒，不朗读。</summary>
+    [ObservableProperty]
+    private bool _notifyOnly;
+
     /// <summary>关掉后这条 token 立刻失效，不用删。</summary>
     [ObservableProperty]
     private bool _enabled = true;

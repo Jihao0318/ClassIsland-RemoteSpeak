@@ -22,7 +22,7 @@ void Check(string name, bool ok, string? detail = null)
 }
 
 var mainLog = new RequestLog(TmpFile("main.log"));
-var server = new RemoteSpeakServer((text, _) =>
+var server = new RemoteSpeakServer((text, _, _) =>
 {
     if (explode)
     {
@@ -147,7 +147,7 @@ server.Dispose();
 using (var blocker = new TcpListener(IPAddress.Any, port + 2))
 {
     blocker.Start();
-    var busy = new RemoteSpeakServer((_, _) => Task.FromResult(true), new RequestLog(TmpFile("busy.log")));
+    var busy = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), new RequestLog(TmpFile("busy.log")));
     var retryStates = new List<string>();
     busy.Changed += (_, _) => retryStates.Add($"{busy.Address}|{busy.LastError}");
     var busyError = busy.Start(port + 2, "");
@@ -184,7 +184,7 @@ using (var blocker = new TcpListener(IPAddress.Any, port + 2))
 }
 
 // 11.5 并发请求不能把接受循环卡住
-using (var parallel = new RemoteSpeakServer((_, _) => Task.FromResult(true), new RequestLog(TmpFile("parallel.log"))))
+using (var parallel = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), new RequestLog(TmpFile("parallel.log"))))
 {
     parallel.Start(port + 3, "");
     using var bulk = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 3}/") };
@@ -197,7 +197,7 @@ using (var parallel = new RemoteSpeakServer((_, _) => Task.FromResult(true), new
 }
 
 // 12. 没启动时不监听
-var idle = new RemoteSpeakServer((_, _) => Task.FromResult(true), new RequestLog(TmpFile("idle.log")));
+var idle = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), new RequestLog(TmpFile("idle.log")));
 Check("未启动不监听", idle.Address.Length == 0);
 idle.Dispose();
 
@@ -272,7 +272,7 @@ using (var blocker = new TcpListener(IPAddress.Any, port + 5))
 {
     blocker.Start();
     var floodLog = new RequestLog(TmpFile("flood.log"));
-    var stuck = new RemoteSpeakServer((_, _) => Task.FromResult(true), floodLog);
+    var stuck = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), floodLog);
     stuck.Start(port + 5, "");
     await Task.Delay(6000); // 期间监督循环至少又重试了两轮
     Check("同一条故障只记一次", floodLog.Count == 1, string.Join(" / ", floodLog.Snapshot().Select(e => e.Display)));
@@ -284,7 +284,7 @@ using (var blocker = new TcpListener(IPAddress.Any, port + 5))
 var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x01, 0x02, 0x03 };
 var snapLog = new RequestLog(TmpFile("snapshot.log"));
 Func<CancellationToken, Task<SnapshotFrame>> snapFake = _ => Task.FromResult(new SnapshotFrame(jpeg, "测试摄像头", 1280, 720));
-var snapServer = new RemoteSpeakServer((_, _) => Task.FromResult(true), snapLog, ct => snapFake(ct));
+var snapServer = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), snapLog, ct => snapFake(ct));
 using var snapClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 6}/") };
 
 async Task<(int status, string? contentType, string? cacheControl, byte[] body)> GetSnapshot(string? sentToken, string method = "GET")
@@ -345,7 +345,7 @@ Check("异常之后取景还能用", (await GetSnapshot("snap-tk")).status == 20
 
 // 18.6 开关开着但没接上取景回调
 var bareLog = new RequestLog(TmpFile("snapshot-bare.log"));
-var bareServer = new RemoteSpeakServer((_, _) => Task.FromResult(true), bareLog);
+var bareServer = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), bareLog);
 bareServer.Start(port + 7, "", true);
 using (var bareClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 7}/") })
 {
@@ -446,7 +446,7 @@ Check("设置里默认开着记录正常请求", new RemoteSpeak.Models.Settings
 
 var quietLog = new RequestLog(TmpFile("quiet.log"));
 quietLog.LogRequests = false;
-var quietServer = new RemoteSpeakServer((_, _) => Task.FromResult(true), quietLog);
+var quietServer = new RemoteSpeakServer((_, _, _) => Task.FromResult(true), quietLog);
 quietServer.Start(port + 8, "tk");
 using (var quietClient = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port + 8}/") })
 {
@@ -528,7 +528,7 @@ Check("FixUp 把 9 遍钳到 5", bigRepeat.RepeatTimes == 5, bigRepeat.RepeatTim
 
 var repLog = new RequestLog(TmpFile("repeat.log"));
 var repRepeats = new List<int?>();
-var repServer = new RemoteSpeakServer((text, repeat) =>
+var repServer = new RemoteSpeakServer((text, repeat, _) =>
 {
     repRepeats.Add(repeat);
     return Task.FromResult(true);

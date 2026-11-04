@@ -64,6 +64,8 @@
                                                   Content="允许播报" VerticalAlignment="Center" />
                                         <CheckBox IsChecked="{Binding AllowSnapshot, Mode=TwoWay}"
                                                   Content="允许取景" VerticalAlignment="Center" />
+                                        <CheckBox IsChecked="{Binding NotifyOnly, Mode=TwoWay}"
+                                                  Content="只通知不朗读" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding UsageText}" FontSize="12"
                                                    Opacity="0.6" VerticalAlignment="Center" />
                                     </StackPanel>

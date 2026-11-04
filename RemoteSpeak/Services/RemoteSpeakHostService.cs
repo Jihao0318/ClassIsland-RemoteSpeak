@@ -111,7 +111,7 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
 
         try
         {
-            await provider.SpeakAsync(text, repeat).ConfigureAwait(false);
+            await provider.SpeakAsync(text, repeat, options).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)

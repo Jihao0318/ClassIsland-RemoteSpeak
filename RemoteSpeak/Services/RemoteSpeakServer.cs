@@ -18,7 +18,7 @@ public sealed class RemoteSpeakServer : IDisposable
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(15);
 
     /// <summary>收到文本就交给提醒队列，第二个参数是接口的 repeat（没给就是 null，听本地设置的）；返回 false 表示插件还没就绪。</summary>
-    private readonly Func<string, int?, Task<bool>> _onText;
+    private readonly Func<string, int?, SpeakOptions, Task<bool>> _onText;
 
     /// <summary>取景回调；没接上时 /snapshot 一律回 503。</summary>
     private readonly Func<CancellationToken, Task<SnapshotFrame>>? _onSnapshot;
@@ -48,7 +48,7 @@ public sealed class RemoteSpeakServer : IDisposable
     private int _generation;
 
     public RemoteSpeakServer(
-        Func<string, int?, Task<bool>> onText,
+        Func<string, int?, SpeakOptions, Task<bool>> onText,
         RequestLog log,
         Func<CancellationToken, Task<SnapshotFrame>>? onSnapshot = null)
     {
@@ -382,7 +382,10 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
-            if (!await _onText(payload.Text, payload.Repeat).ConfigureAwait(false))
+            var options = new SpeakOptions(
+                NotifyOnly: speakToken.Token?.NotifyOnly ?? false,
+                TokenName: speakToken.Token?.Name ?? "");
+            if (!await _onText(payload.Text, payload.Repeat, options).ConfigureAwait(false))
             {
                 await FailAsync(request, response, HttpStatusCode.ServiceUnavailable, "插件正在启动，稍后再试").ConfigureAwait(false);
                 return;

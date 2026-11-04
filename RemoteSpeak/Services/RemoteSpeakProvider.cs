@@ -34,7 +34,7 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
     /// </summary>
     /// <param name="text">要念的正文，也是画面上显示的那一行。</param>
     /// <param name="apiRepeat">接口的 repeat；没给就用设置里的「重复遍数」。</param>
-    public async Task SpeakAsync(string text, int? apiRepeat)
+    public async Task SpeakAsync(string text, int? apiRepeat, SpeakOptions options)
     {
         var times = SpeakRequest.ResolveRepeat(apiRepeat, _settings.RepeatTimes);
         // 发送要落到宿主的 UI 线程上：ShowNotification 往下会碰提醒窗口的控件，
@@ -43,7 +43,7 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
         {
             SuppressOutstanding();
             IAppHost.GetService<ISpeechService>().ClearSpeechQueue();
-            var request = BuildRequest(text, times);
+            var request = BuildRequest(text, times, options);
             Track(request);
             ShowNotification(request);
         });
@@ -99,12 +99,17 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
         }
     }
 
-    private NotificationRequest BuildRequest(string text, int times)
+    private NotificationRequest BuildRequest(string text, int times, SpeakOptions options)
     {
+        // 只通知的标题带上 Token 昵称，一眼能看出是谁在喊；没昵称就只写「只通知」。
+        var maskText = options.NotifyOnly
+            ? (string.IsNullOrWhiteSpace(options.TokenName) ? "只通知" : $"只通知：{options.TokenName}")
+            : _settings.MaskText;
+
         return new NotificationRequest
         {
             MaskContent = NotificationContent.CreateTwoIconsMask(
-                _settings.MaskText,
+                maskText,
                 hasRightIcon: false,
                 factory: content =>
                 {
@@ -112,12 +117,12 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
                     // 朗读交给正文那一段，两段都开会把同一句话念两遍。
                     content.IsSpeechEnabled = false;
                 }),
-            OverlayContent = BuildOverlay(text, times)
+            OverlayContent = BuildOverlay(text, times, options.NotifyOnly)
         };
     }
 
     /// <summary>正文只做静态一行显示：摆不下就摆不下，念不能少。</summary>
-    private NotificationContent BuildOverlay(string text, int times) =>
+    private NotificationContent BuildOverlay(string text, int times, bool notifyOnly) =>
         NotificationContent.CreateSimpleTextContent(
             text,
             content =>
@@ -125,6 +130,7 @@ public sealed class RemoteSpeakProvider : NotificationProviderBase
                 content.Duration = _settings.EstimateOverlayDuration(text, times);
                 // 画面上还是原文那一句，只有朗读文本按遍数重复——
                 // NotificationContent 的显示文本（模板里的 Text）和 SpeechContent 是两个字段。
-                content.SpeechContent = SpeakScript.SpeechText(text, times);
+                content.IsSpeechEnabled = !notifyOnly;
+                content.SpeechContent = notifyOnly ? text : SpeakScript.SpeechText(text, times);
             });
 }
