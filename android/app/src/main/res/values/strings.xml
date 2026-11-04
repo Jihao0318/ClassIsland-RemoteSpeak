@@ -108,6 +108,8 @@
     <string name="broadcast_snapshot_refresh_again">Refresh</string>
     <string name="broadcast_edit_full">Full-screen editor</string>
     <string name="home_go_broadcast">Go to broadcast</string>
+    <string name="broadcast_no_permission">This token cannot broadcast</string>
+    <string name="broadcast_notify_only_hint">This token only shows the notification, no speech</string>
     <string name="broadcast_input_hint">Type what to read out</string>
     <string name="broadcast_input_label">Message</string>
     <string name="broadcast_url_unset">Not set</string>

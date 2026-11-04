@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
 import com.remotebroadcast.data.remote.BroadcastApi
 import com.remotebroadcast.data.remote.BroadcastFailure
+import com.remotebroadcast.data.remote.Permissions
 
 const val SNAPSHOT_AUTO_REFRESH_MILLIS = 2000L
 
@@ -48,6 +49,7 @@ data class BroadcastUiState(
     val triggerMode: BroadcastTriggerMode = BroadcastTriggerMode.CONFIRM,
     val autoRefreshSnapshot: Boolean = false,
     val setupDone: Boolean = false,
+    val permissions: Permissions = Permissions(),
     val text: String = "",
     val sendStatus: SendStatus = SendStatus.Idle,
     val snapshotStatus: SnapshotStatus = SnapshotStatus.Idle,

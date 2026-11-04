@@ -13,6 +13,7 @@ import java.io.IOException
 private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
 private const val ENDPOINT_HEALTH = "health"
+private const val ENDPOINT_PERMISSIONS = "permissions"
 private const val ENDPOINT_SPEAK = "speak"
 private const val ENDPOINT_SNAPSHOT = "snapshot"
 
@@ -34,6 +35,17 @@ sealed interface BroadcastOutcome<out T> {
 }
 
 class SnapshotFrame(val jpeg: ByteArray, val capturedAtMillis: Long)
+
+/** 这条 Token 能做什么；/permissions 不要求任何权限，Token 有效就回 200。 */
+data class Permissions(
+    val name: String = "",
+    val notify: Boolean = true,
+    val speak: Boolean = true,
+    val snapshot: Boolean = true,
+) {
+    val canBroadcast: Boolean
+        get() = notify || speak
+}
 
 object BroadcastApi {
 
@@ -121,6 +133,17 @@ object BroadcastApi {
     fun health(baseUrl: String, token: String): BroadcastOutcome<String> =
         get(ENDPOINT_HEALTH, baseUrl, token) { response ->
             response.body.string().let(::serviceNameOf)
+        }
+
+    fun permissions(baseUrl: String, token: String): BroadcastOutcome<Permissions> =
+        get(ENDPOINT_PERMISSIONS, baseUrl, token) { response ->
+            val json = org.json.JSONObject(response.body.string())
+            Permissions(
+                name = json.optString("name"),
+                notify = json.optBoolean("notify", true),
+                speak = json.optBoolean("speak", true),
+                snapshot = json.optBoolean("snapshot", true),
+            )
         }
 
     fun snapshot(baseUrl: String, token: String): BroadcastOutcome<SnapshotFrame> =

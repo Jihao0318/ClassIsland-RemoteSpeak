@@ -150,9 +150,18 @@ fun BroadcastPagerMiuix(
                                     onClick = onOpenSettings,
                                 )
                             }
-                            SnapshotBlock(state, actions)
-                            InputBlock(state, actions, focusRequester)
-                            SendBlock(state, actions)
+                            if (!state.permissions.canBroadcast) {
+                                WarningCard(
+                                    message = stringResource(R.string.broadcast_no_permission),
+                                    level = WarningLevel.Error,
+                                )
+                            } else {
+                                if (state.permissions.snapshot) {
+                                    SnapshotBlock(state, actions)
+                                }
+                                InputBlock(state, actions, focusRequester)
+                                SendBlock(state, actions, state.permissions.speak)
+                            }
                         }
                     }
                     Spacer(Modifier.height(bottomInnerPadding))
@@ -294,7 +303,7 @@ private fun InputBlock(
 }
 
 @Composable
-private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
+private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions, canSpeak: Boolean) {
     var releaseTooEarly by rememberSaveable { mutableStateOf(false) }
     val confirmTitle = stringResource(R.string.broadcast_confirm_title)
     val confirmLabel = stringResource(R.string.confirm)
@@ -335,6 +344,14 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
             onSend = ::requestSend,
             onShortTap = { releaseTooEarly = true },
         )
+        if (!canSpeak) {
+            Text(
+                text = stringResource(R.string.broadcast_notify_only_hint),
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                color = colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
         Text(
             text = stringResource(
                 if (state.sendsOnLongPress) R.string.broadcast_long_press_hint

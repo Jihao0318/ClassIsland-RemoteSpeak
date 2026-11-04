@@ -35,6 +35,7 @@ class BroadcastViewModel(
     private var sendJob: Job? = null
     private var snapshotJob: Job? = null
     private var statusJob: Job? = null
+    private var lastPermissionsKey: String? = null
 
     /** 顶部提示只留几秒，别一直挂在那儿；发送中的那条要留到有结果。 */
     private fun showStatus(status: SendStatus, durationMs: Long = 3000) {
@@ -69,6 +70,19 @@ class BroadcastViewModel(
                 autoRefreshSnapshot = persisted.autoRefreshSnapshot,
                 setupDone = persisted.setupDone,
             )
+        }
+
+        // 地址或 Token 变了才重新问权限，页面来回切不必每次都打接口。
+        val key = "${persisted.baseUrl}|${persisted.token}"
+        if (key == lastPermissionsKey) return
+        lastPermissionsKey = key
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                BroadcastApi.permissions(persisted.baseUrl, persisted.token)
+            }
+            if (outcome is BroadcastOutcome.Success) {
+                _uiState.update { it.copy(permissions = outcome.value) }
+            }
         }
     }
 

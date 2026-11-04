@@ -107,6 +107,8 @@
     <string name="broadcast_snapshot_refresh_again">刷新</string>
     <string name="broadcast_edit_full">全屏编辑</string>
     <string name="home_go_broadcast">去喊话</string>
+    <string name="broadcast_no_permission">这个 Token 没有播报权限</string>
+    <string name="broadcast_notify_only_hint">这条 Token 只通知，不朗读</string>
     <string name="broadcast_input_hint">输入要念的话</string>
     <string name="broadcast_input_label">播报内容</string>
     <string name="broadcast_url_unset">还没设置</string>
