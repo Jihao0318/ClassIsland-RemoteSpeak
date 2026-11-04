@@ -86,7 +86,7 @@ public sealed partial class ApiToken : ObservableObject
     /// <summary>统计变了以后刷新 <see cref="UsageText"/>。</summary>
     public void RaiseUsageChanged() => OnPropertyChanged(nameof(UsageText));
 
-    /// <summary>生成一条新的随机 token，32 个十六进制字符。</summary>
+    /// <summary>生成一条新的随机 token：sk- 前缀 + 32 个十六进制字符。</summary>
     public static string NewValue() =>
-        Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+        "sk-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
 }
