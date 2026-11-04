@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.remotebroadcast.ui.LocalMainPagerState
 import com.remotebroadcast.ui.navigation3.Navigator
+import com.remotebroadcast.ui.viewmodel.BroadcastViewModel
 import com.remotebroadcast.ui.viewmodel.HomeViewModel
 import com.remotebroadcast.ui.viewmodel.ServerStatusViewModel
 
@@ -25,6 +26,7 @@ fun HomePager(
     val viewModel = viewModel<HomeViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val statusViewModel = viewModel<ServerStatusViewModel>()
+    val broadcastViewModel = viewModel<BroadcastViewModel>()
     val serverStatus by statusViewModel.uiState.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
 
@@ -55,6 +57,7 @@ fun HomePager(
                 mainPagerState.animateToPage(2)
             } else {
                 statusViewModel.check(showBusy = true)
+                broadcastViewModel.refreshPermissions()
             }
         },
         onGoBroadcast = {
