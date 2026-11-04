@@ -33,6 +33,8 @@ fun SettingPager(
         onSetBroadcastTriggerIndex = viewModel::setBroadcastTriggerIndex,
         onSetBroadcastRepeatIndex = viewModel::setBroadcastRepeatIndex,
         onSetSnapshotAutoRefresh = viewModel::setSnapshotAutoRefresh,
+        onSetDownloadChannelIndex = viewModel::setDownloadChannelIndex,
+        onSetDownloadChannelCustom = viewModel::setDownloadChannelCustom,
     )
 
     val mainPagerState = LocalMainPagerState.current
