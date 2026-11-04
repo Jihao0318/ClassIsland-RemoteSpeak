@@ -41,4 +41,6 @@ data class SettingsScreenActions(
     val onSetBroadcastTriggerIndex: (Int) -> Unit,
     val onSetBroadcastRepeatIndex: (Int) -> Unit,
     val onSetSnapshotAutoRefresh: (Boolean) -> Unit,
+    val onSetDownloadChannelIndex: (Int) -> Unit,
+    val onSetDownloadChannelCustom: (String) -> Unit,
 )
