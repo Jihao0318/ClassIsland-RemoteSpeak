@@ -608,7 +608,7 @@ public sealed class RemoteSpeakServer : IDisposable
         catch (IOException)
         {
             // 超时或客户端半路断开，按空白文本回 400。
-            return new SpeakRequest(string.Empty, null, null);
+            return new SpeakRequest(string.Empty, null, null, null);
         }
 
         return SpeakRequest.Parse(body);
