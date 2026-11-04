@@ -92,6 +92,10 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("broadcast_setup_done", false)
         set(value) = prefs.edit { putBoolean("broadcast_setup_done", value) }
 
+    override var hideViewOnlyHint: Boolean
+        get() = prefs.getBoolean("hide_view_only_hint", false)
+        set(value) = prefs.edit { putBoolean("hide_view_only_hint", value) }
+
     private companion object {
         const val MIN_REPEAT = 1
         const val MAX_REPEAT = 5

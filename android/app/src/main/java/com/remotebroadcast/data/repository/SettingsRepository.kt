@@ -21,4 +21,5 @@ interface SettingsRepository {
     var broadcastTriggerMode: Int
     var snapshotAutoRefresh: Boolean
     var broadcastSetupDone: Boolean
+    var hideViewOnlyHint: Boolean
 }

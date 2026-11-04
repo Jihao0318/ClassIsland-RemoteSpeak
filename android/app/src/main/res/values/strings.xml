@@ -112,6 +112,7 @@
     <string name="broadcast_notify_only_hint">This token only shows the notification, no speech</string>
     <string name="broadcast_mode_speak">Read aloud</string>
     <string name="broadcast_mode_hint">Uncheck to show the notice only</string>
+    <string name="broadcast_view_only_hint">No broadcast permission; you can only view the camera. Tap to stop showing this.</string>
     <string name="broadcast_input_hint">Type what to read out</string>
     <string name="broadcast_input_label">Message</string>
     <string name="broadcast_url_unset">Not set</string>

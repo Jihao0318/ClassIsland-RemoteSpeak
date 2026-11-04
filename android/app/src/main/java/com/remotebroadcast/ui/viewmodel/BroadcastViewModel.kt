@@ -57,6 +57,7 @@ class BroadcastViewModel(
         triggerMode = BroadcastTriggerMode.fromValue(repo.broadcastTriggerMode),
         autoRefreshSnapshot = repo.snapshotAutoRefresh,
         setupDone = repo.broadcastSetupDone,
+        showViewOnlyHint = !repo.hideViewOnlyHint,
     )
 
     fun refresh() {
@@ -69,6 +70,7 @@ class BroadcastViewModel(
                 triggerMode = persisted.triggerMode,
                 autoRefreshSnapshot = persisted.autoRefreshSnapshot,
                 setupDone = persisted.setupDone,
+                showViewOnlyHint = persisted.showViewOnlyHint,
             )
         }
 
@@ -109,6 +111,11 @@ class BroadcastViewModel(
     fun skipGuide() {
         repo.broadcastSetupDone = true
         _uiState.update { it.copy(setupDone = true) }
+    }
+
+    fun dismissViewOnlyHint() {
+        repo.hideViewOnlyHint = true
+        _uiState.update { it.copy(showViewOnlyHint = false) }
     }
 
     fun setSendMode(speak: Boolean) {

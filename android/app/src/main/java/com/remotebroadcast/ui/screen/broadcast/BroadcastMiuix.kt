@@ -152,6 +152,18 @@ fun BroadcastPagerMiuix(
                                     onClick = onOpenSettings,
                                 )
                             }
+                            // 只有取景权限时给一句说明；点掉后不再弹。
+                            if (!state.permissions.canBroadcast &&
+                                state.permissions.snapshot &&
+                                state.showViewOnlyHint
+                            ) {
+                                WarningCard(
+                                    message = stringResource(R.string.broadcast_view_only_hint),
+                                    level = WarningLevel.Notice,
+                                    onClick = actions.onDismissViewOnlyHint,
+                                )
+                            }
+
                             // 取景和播报各算各的：只有取景权限就只看画面，不弹「没有播报权限」。
                             if (state.permissions.snapshot) {
                                 SnapshotBlock(state, actions)
