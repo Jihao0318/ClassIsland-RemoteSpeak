@@ -45,7 +45,9 @@ class HomeViewModel : ViewModel() {
                 return@launch
             }
             runCatching { installApk(file) }
-                .onFailure { _uiState.update { it.copy(downloadError = "打不开安装器：${it.message}") } }
+                .onFailure { error ->
+                    _uiState.update { it.copy(downloadError = "打不开安装器：${error.message}") }
+                }
         }
     }
 

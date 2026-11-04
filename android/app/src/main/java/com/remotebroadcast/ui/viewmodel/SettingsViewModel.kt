@@ -104,7 +104,9 @@ class SettingsViewModel(
 
             _uiState.update { it.copy(updateMessage = null) }
             runCatching { installApk(file) }
-                .onFailure { _uiState.update { it.copy(updateMessage = "打不开安装器：${it.message}") } }
+                .onFailure { error ->
+                    _uiState.update { it.copy(updateMessage = "打不开安装器：${error.message}") }
+                }
         }
     }
 
