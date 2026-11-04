@@ -23,8 +23,18 @@ public sealed class CameraSnapshotter
 
     private readonly RequestLog _log;
 
-    /// <summary>同一时刻只让一个请求碰摄像头，后到的当场回忙——网页轮询不该把摄像头排成一串。</summary>
-    private readonly SemaphoreSlim _cameraLock = new(1, 1);
+    /// <summary>同一时刻只开一次摄像头：并发请求等同一个拍摄任务，拿同一帧。</summary>
+    private readonly object _sync = new();
+
+    private Task<SnapshotFrame>? _inflight;
+    private SnapshotFrame? _lastFrame;
+    private long _lastFrameAt;
+
+    /// <summary>拍完多久内的重复请求直接吃缓存，不再碰摄像头。</summary>
+    private const long CacheMillis = 1000;
+
+    /// <summary>并发请求最多等这么久；设备卡死或独占时才回忙。</summary>
+    private static readonly TimeSpan WaitBudget = TimeSpan.FromSeconds(5);
 
     public CameraSnapshotter(RequestLog log)
     {
@@ -59,19 +69,55 @@ public sealed class CameraSnapshotter
     /// </summary>
     public async Task<SnapshotFrame> CaptureAsync(string deviceId, int targetHeight, CancellationToken cancellationToken)
     {
-        if (!await _cameraLock.WaitAsync(TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
+        Task<SnapshotFrame> job;
+
+        lock (_sync)
         {
-            throw new SnapshotUnavailableException("上一次取景还没结束。");
+            if (_lastFrame != null && Environment.TickCount64 - _lastFrameAt < CacheMillis)
+            {
+                return _lastFrame;
+            }
+
+            if (_inflight == null)
+            {
+                // 用 None：第一个请求断开也不该把等着看画面的其他人一起掐了。
+                var started = CaptureCoreAsync(deviceId, targetHeight, CancellationToken.None);
+                _inflight = started;
+                // 失败也要把占位清掉，否则后面的人会一直等这个已经挂掉的任务。
+                _ = started.ContinueWith(
+                    _ =>
+                    {
+                        lock (_sync)
+                        {
+                            if (ReferenceEquals(_inflight, started))
+                            {
+                                _inflight = null;
+                            }
+                        }
+                    },
+                    TaskScheduler.Default);
+            }
+
+            job = _inflight;
         }
 
+        SnapshotFrame frame;
         try
         {
-            return await CaptureCoreAsync(deviceId, targetHeight, cancellationToken).ConfigureAwait(false);
+            frame = await job.WaitAsync(WaitBudget, cancellationToken).ConfigureAwait(false);
         }
-        finally
+        catch (TimeoutException)
         {
-            _cameraLock.Release();
+            throw new SnapshotUnavailableException("正在取景，请稍后再试。");
         }
+
+        lock (_sync)
+        {
+            _lastFrame = frame;
+            _lastFrameAt = Environment.TickCount64;
+        }
+
+        return frame;
     }
 
     private async Task<SnapshotFrame> CaptureCoreAsync(string deviceId, int targetHeight, CancellationToken cancellationToken)
