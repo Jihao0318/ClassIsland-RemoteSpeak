@@ -30,8 +30,10 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
+import com.remotebroadcast.ui.theme.isInDarkTheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme.isDynamicColor
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 @Composable
@@ -57,19 +59,34 @@ fun connectionHeadline(state: ServerStatusUiState): String = stringResource(
 private data class StatusPalette(val container: Color, val icon: Color, val text: Color)
 
 @Composable
-private fun statusPalette(status: ConnectionStatus): StatusPalette? = when (status) {
-    // 用主题容器色，Monet 取色时才会跟着壁纸变；写死绿色会让动态取色失效。
-    ConnectionStatus.ONLINE -> StatusPalette(
-        container = colorScheme.secondaryContainer,
-        icon = colorScheme.primary,
-        text = colorScheme.onSecondaryContainer,
-    )
-    ConnectionStatus.OFFLINE -> StatusPalette(
-        container = colorScheme.errorContainer,
-        icon = colorScheme.error,
-        text = colorScheme.onErrorContainer,
-    )
-    else -> null
+private fun statusPalette(status: ConnectionStatus): StatusPalette? {
+    val dynamic = isDynamicColor
+    val dark = isInDarkTheme()
+
+    return when (status) {
+        // 开了 Monet 就跟主题容器色走；没开就回到原来的绿/红，别把静态配色也改掉。
+        ConnectionStatus.ONLINE -> when {
+            dynamic -> StatusPalette(
+                container = colorScheme.secondaryContainer,
+                icon = colorScheme.primary,
+                text = colorScheme.onSecondaryContainer,
+            )
+            dark -> StatusPalette(Color(0xFF12381C), Color(0xFF36D167), Color(0xFFB7F7C6))
+            else -> StatusPalette(Color(0xFFDFFAE4), Color(0xFF36D167), Color(0xFF111111))
+        }
+
+        ConnectionStatus.OFFLINE -> when {
+            dynamic -> StatusPalette(
+                container = colorScheme.errorContainer,
+                icon = colorScheme.error,
+                text = colorScheme.onErrorContainer,
+            )
+            dark -> StatusPalette(Color(0xFF310808), Color(0xFFF72727), Color(0xFFF2B8B5))
+            else -> StatusPalette(Color(0xFFF8E2E2), Color(0xFFF72727), Color(0xFF111111))
+        }
+
+        else -> null
+    }
 }
 
 @Composable
