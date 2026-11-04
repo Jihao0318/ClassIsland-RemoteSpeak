@@ -32,9 +32,11 @@ fun BroadcastPager(
         if (isCurrentPage) {
             viewModel.refresh()
             if (mainPagerState.consumeBroadcastFocus()) {
-                // 等页面组合完成再要焦点，否则 requestFocus 会打在空树上。
+                // 等页面组合完成再要焦点；没播报权限时输入框根本没渲染，不能硬要。
                 delay(150)
-                focusRequester.requestFocus()
+                if (viewModel.uiState.value.permissions.canBroadcast) {
+                    runCatching { focusRequester.requestFocus() }
+                }
             }
         }
     }

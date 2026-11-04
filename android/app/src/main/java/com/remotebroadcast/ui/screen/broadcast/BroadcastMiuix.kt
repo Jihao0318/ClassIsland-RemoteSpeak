@@ -87,6 +87,7 @@ import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme.isDynamicColor
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -144,7 +145,6 @@ fun BroadcastPagerMiuix(
                         if (state.showGuide) {
                             GuideBlock(state, actions)
                         } else {
-                            SendStatusBanner(state.sendStatus)
                             if (state.baseUrl.isBlank()) {
                                 WarningCard(
                                     message = stringResource(R.string.broadcast_url_missing_hint),
@@ -158,6 +158,7 @@ fun BroadcastPagerMiuix(
                                     level = WarningLevel.Error,
                                 )
                             } else {
+                                SendStatusBanner(state.sendStatus)
                                 if (state.permissions.snapshot) {
                                     SnapshotBlock(state, actions)
                                 }
@@ -345,7 +346,6 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 SwitchPreference(
                     title = stringResource(R.string.broadcast_mode_speak),
-                    summary = stringResource(R.string.broadcast_mode_hint),
                     startAction = {
                         Icon(
                             imageVector = Icons.Rounded.VolumeUp,
@@ -425,7 +425,9 @@ private fun SendButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     var holdFired by remember { mutableStateOf(false) }
-    val accent = Color(0xFF0A84FF)
+    // 和 KernelSU 一样：开了 Monet 用主题色，没开保持原来的蓝。
+    val accent = if (isDynamicColor) colorScheme.primary else Color(0xFF0A84FF)
+    val onAccent = if (isDynamicColor) colorScheme.onPrimary else Color.White
 
     // Releasing before the timeout cancels this effect, so only a real hold sends.
     LaunchedEffect(pressed) {
@@ -458,7 +460,7 @@ private fun SendButton(
     ) {
         Text(
             text = stringResource(if (sending) R.string.broadcast_sending else R.string.broadcast_send),
-            color = Color.White,
+            color = onAccent,
             fontSize = MiuixTheme.textStyles.button.fontSize,
             fontWeight = FontWeight.SemiBold,
         )
