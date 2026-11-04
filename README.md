@@ -14,7 +14,6 @@
 </p>
 
 <p>
-  <a href="https://github.com/Jihao0318/ClassIsland-RemoteSpeak/actions/workflows/build.yml"><img alt="Build" src="https://github.com/Jihao0318/ClassIsland-RemoteSpeak/actions/workflows/build.yml/badge.svg"></a>
   <a href="https://github.com/Jihao0318/ClassIsland-RemoteSpeak/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Jihao0318/ClassIsland-RemoteSpeak?style=flat-square"></a>
 </p>
 
