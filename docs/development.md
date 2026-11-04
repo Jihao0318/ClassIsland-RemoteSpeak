@@ -74,8 +74,8 @@ Icon.svg                              README 头图与图标的矢量源
 发版前把 `RemoteSpeak/manifest.yml` 与 `RemoteSpeak/RemoteSpeak.csproj` 里的版本改成同一个四段版本号，再打 tag：
 
 ```bash
-git tag v1.3.1.0
-git push origin v1.3.1.0
+git tag v1.3.1.1
+git push origin v1.3.1.1
 ```
 
 tag 与两处版本不一致时工作流会直接失败，不会发出一个版本号对不上的包。`checksums.md` 是上架 ClassIsland 插件市场用的 MD5 校验信息，从 Release 本地安装不读它。

@@ -94,7 +94,7 @@ dotnet build RemoteSpeak/RemoteSpeak.csproj -c Release -p:CreateCipx=true -p:Gen
 
 产物：`RemoteSpeak/cipx/RemoteSpeak.cipx`。
 
-推送到 `main` 或发 PR 时 CI 会构建并打包；推送 `v1.3.1.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
+推送到 `main` 或发 PR 时 CI 会构建并打包；推送 `v1.3.1.1` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
 
 ## 反馈
 
