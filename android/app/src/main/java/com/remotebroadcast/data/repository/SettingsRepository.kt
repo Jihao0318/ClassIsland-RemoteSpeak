@@ -22,4 +22,6 @@ interface SettingsRepository {
     var snapshotAutoRefresh: Boolean
     var broadcastSetupDone: Boolean
     var hideViewOnlyHint: Boolean
+    var downloadChannel: String
+    var downloadChannelCustom: String
 }

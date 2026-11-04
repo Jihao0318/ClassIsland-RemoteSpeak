@@ -96,6 +96,14 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("hide_view_only_hint", false)
         set(value) = prefs.edit { putBoolean("hide_view_only_hint", value) }
 
+    override var downloadChannel: String
+        get() = prefs.getString("download_channel", "auto") ?: "auto"
+        set(value) = prefs.edit { putString("download_channel", value) }
+
+    override var downloadChannelCustom: String
+        get() = prefs.getString("download_channel_custom", "") ?: ""
+        set(value) = prefs.edit { putString("download_channel_custom", value.trim()) }
+
     private companion object {
         const val MIN_REPEAT = 1
         const val MAX_REPEAT = 5

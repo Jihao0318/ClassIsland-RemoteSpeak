@@ -48,6 +48,8 @@ class SettingsViewModel(
             val broadcastRepeat = repo.broadcastRepeat
             val broadcastTriggerMode = repo.broadcastTriggerMode
             val snapshotAutoRefresh = repo.snapshotAutoRefresh
+            val downloadChannel = repo.downloadChannel
+            val downloadChannelCustom = repo.downloadChannelCustom
 
             _uiState.update {
                 it.copy(
@@ -69,6 +71,8 @@ class SettingsViewModel(
                     broadcastRepeat = broadcastRepeat,
                     broadcastTriggerMode = broadcastTriggerMode,
                     snapshotAutoRefresh = snapshotAutoRefresh,
+                    downloadChannel = downloadChannel,
+                    downloadChannelCustom = downloadChannelCustom,
                 )
             }
 
@@ -80,6 +84,23 @@ class SettingsViewModel(
                 _uiState.update { it.copy(snapshotAllowed = outcome.value.snapshot) }
             }
         }
+    }
+
+    fun setDownloadChannelIndex(index: Int) {
+        val value = when (index) {
+            1 -> "github"
+            2 -> "ghfast"
+            3 -> "gh-proxy"
+            4 -> "custom"
+            else -> "auto"
+        }
+        repo.downloadChannel = value
+        _uiState.update { it.copy(downloadChannel = value) }
+    }
+
+    fun setDownloadChannelCustom(value: String) {
+        repo.downloadChannelCustom = value
+        _uiState.update { it.copy(downloadChannelCustom = value.trim()) }
     }
 
     fun setCheckUpdate(enabled: Boolean) {

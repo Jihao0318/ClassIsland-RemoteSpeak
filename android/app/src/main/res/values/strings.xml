@@ -11,6 +11,10 @@
     <string name="settings">Settings</string>
     <string name="about">About</string>
     <string name="send_log">Send logs</string>
+    <string name="settings_download_channel">Download channel</string>
+    <string name="settings_download_channel_summary">Which mirror to use for updates; Auto picks the fastest</string>
+    <string name="settings_download_channel_custom">Custom prefix</string>
+    <string name="settings_download_channel_custom_summary">Prepended to the original URL, e.g. https://example.com/</string>
     <string name="settings_check_update">Check for updates</string>
     <string name="settings_check_update_summary">Automatically check for updates when opening the app.</string>
     <string name="new_version_available">New version %1$s is available, click to upgrade!</string>

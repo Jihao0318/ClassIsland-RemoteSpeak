@@ -16,7 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.ContactPage
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Palette
@@ -120,6 +122,37 @@ fun SettingPagerMiuix(
                             checked = uiState.checkUpdate,
                             onCheckedChange = actions.onSetCheckUpdate
                         )
+                        OverlayDropdownPreference(
+                            title = stringResource(id = R.string.settings_download_channel),
+                            summary = stringResource(id = R.string.settings_download_channel_summary),
+                            items = listOf("自动（测速选最快）", "GitHub 直连", "ghfast", "gh-proxy", "自定义"),
+                            startAction = {
+                                Icon(
+                                    Icons.Rounded.CloudDownload,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                    contentDescription = stringResource(id = R.string.settings_download_channel),
+                                    tint = colorScheme.onBackground
+                                )
+                            },
+                            selectedIndex = when (uiState.downloadChannel) {
+                                "github" -> 1
+                                "ghfast" -> 2
+                                "gh-proxy" -> 3
+                                "custom" -> 4
+                                else -> 0
+                            },
+                            onSelectedIndexChange = actions.onSetDownloadChannelIndex
+                        )
+                        if (uiState.downloadChannel == "custom") {
+                            TextEditPreference(
+                                title = stringResource(id = R.string.settings_download_channel_custom),
+                                value = uiState.downloadChannelCustom,
+                                placeholder = "https://example.com/",
+                                summaryWhenEmpty = stringResource(id = R.string.settings_download_channel_custom_summary),
+                                icon = Icons.Rounded.Link,
+                                onSave = actions.onSetDownloadChannelCustom,
+                            )
+                        }
                     }
 
                     Card(
