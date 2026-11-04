@@ -3,6 +3,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace RemoteSpeak.Models;
 
+/// <summary>一次调用属于哪个接口。</summary>
+public enum TokenUseKind
+{
+    Speak,
+    Snapshot,
+}
+
 /// <summary>
 /// 一条访问 Token。<see cref="Value"/> 是调用方要带在 X-Token 里的串，
 /// <see cref="Name"/> 只用于设置页和日志里认人。
@@ -34,29 +41,40 @@ public sealed partial class ApiToken : ObservableObject
     // 否则设置页的绑定会跨线程炸掉。通知走 UsageUpdated。
     public DateTime? LastUsedAt { get; set; }
 
-    public int TodayCount { get; set; }
+    public int TodaySpeakCount { get; set; }
+
+    public int TodaySnapshotCount { get; set; }
 
     public string UsageDate { get; set; } = "";
 
-    /// <summary>设置页那一行说明：没人用过、今天几次、最后什么时候。</summary>
+    /// <summary>设置页那一行说明：播报和取景分开数，最后什么时候用过。</summary>
     public string UsageText => LastUsedAt == null
         ? "还没用过"
-        : $"今日 {TodayCount} 次 · 最近 {LastUsedAt:MM-dd HH:mm}";
+        : $"播报 {TodaySpeakCount} · 取景 {TodaySnapshotCount} · 最近 {LastUsedAt:MM-dd HH:mm}";
 
     /// <summary>由插件入口在 UI 线程上接过去，负责刷新界面并保存统计。</summary>
     public Action? UsageUpdated { get; set; }
 
-    /// <summary>请求命中时记一笔。跨天自动把今日次数清零。</summary>
-    public void RecordUse()
+    /// <summary>请求命中时记一笔。跨天自动把两类今日次数都清零。</summary>
+    public void RecordUse(TokenUseKind kind)
     {
         var today = DateTime.Now.ToString("yyyy-MM-dd");
         if (UsageDate != today)
         {
             UsageDate = today;
-            TodayCount = 0;
+            TodaySpeakCount = 0;
+            TodaySnapshotCount = 0;
         }
 
-        TodayCount++;
+        if (kind == TokenUseKind.Speak)
+        {
+            TodaySpeakCount++;
+        }
+        else
+        {
+            TodaySnapshotCount++;
+        }
+
         LastUsedAt = DateTime.Now;
         UsageUpdated?.Invoke();
     }

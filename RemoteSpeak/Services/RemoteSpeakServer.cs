@@ -392,7 +392,7 @@ public sealed class RemoteSpeakServer : IDisposable
             // 先记再回响应：真正的成功是提供方接下了，回写只是管道。
             var times = payload.Repeat == null ? "" : $" ×{payload.Repeat}";
             var who = speakToken.Token == null ? "" : $" · token={speakToken.Token.Name}";
-            speakToken.Token?.RecordUse();
+            speakToken.Token?.RecordUse(TokenUseKind.Speak);
             _log.AddRequest("HTTP 202",
                 $"POST /speak{who} · {payload.Text.Length} 字{times} · {RequestLog.Summarize(payload.Text)}");
             await WriteAsync(response, HttpStatusCode.Accepted, "{\"ok\":true}").ConfigureAwait(false);
@@ -481,7 +481,7 @@ public sealed class RemoteSpeakServer : IDisposable
 
         var seconds = Stopwatch.GetElapsedTime(startedAt, Stopwatch.GetTimestamp()).TotalSeconds;
         var who = snapshotToken.Token == null ? "" : $" · token={snapshotToken.Token.Name}";
-        snapshotToken.Token?.RecordUse();
+        snapshotToken.Token?.RecordUse(TokenUseKind.Snapshot);
         _log.AddRequest("HTTP 200",
             $"GET /snapshot{who} · {frame.DeviceName} · {frame.Width}×{frame.Height} · {frame.Jpeg.Length / 1024} KB · {seconds:0.0} 秒");
         response.StatusCode = (int)HttpStatusCode.OK;
