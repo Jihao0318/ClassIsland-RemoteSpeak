@@ -70,7 +70,7 @@ await fetch("http://localhost:8765/speak", {
 | --- | --- | --- |
 | HTTP 服务 | 关闭 | 关闭时一个端口都不监听 |
 | 端口 | `8765` | 被占用时换一个，服务会自动重试 |
-| 访问 Token | 空 | 留空不校验；填了必须带 `X-Token` |
+| 访问 Token | 空 | 可建多条，分别控制播报/取景权限；一条都没有时不校验 |
 | 遮罩文字 | `远程播报` | 提醒遮罩上显示的短语 |
 | 遮罩时长 | `2` 秒 | |
 | 语速 | `4.5` 字/秒 | 只用来估算正文停留时间 |
@@ -94,7 +94,7 @@ dotnet build RemoteSpeak/RemoteSpeak.csproj -c Release -p:CreateCipx=true -p:Gen
 
 产物：`RemoteSpeak/cipx/RemoteSpeak.cipx`。
 
-推送到 `main` 或发 PR 时 CI 会构建并打包；推送 `v1.2.0.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
+推送到 `main` 或发 PR 时 CI 会构建并打包；推送 `v1.3.0.0` 这类 tag 会自动发布 Release。更多见 [开发说明](docs/development.md)。
 
 ## 反馈
 

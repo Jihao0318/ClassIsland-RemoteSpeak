@@ -63,7 +63,7 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
             return;
         }
 
-        if (e.PropertyName is not (nameof(Settings.HttpServiceEnabled) or nameof(Settings.HttpPort) or nameof(Settings.HttpToken)
+        if (e.PropertyName is not (nameof(Settings.HttpServiceEnabled) or nameof(Settings.HttpPort) or nameof(Settings.Tokens)
                                    or nameof(Settings.SnapshotEnabled)))
         {
             return;
@@ -88,7 +88,7 @@ public sealed class RemoteSpeakHostService : IHostedService, IDisposable
             {
                 // 先停再起，端口、Token、取景开关一起按最新值生效。
                 _server.Stop();
-                error = _server.Start(_settings.HttpPort, _settings.HttpToken, _settings.SnapshotEnabled) ?? string.Empty;
+                error = _server.Start(_settings.HttpPort, _settings.Tokens, _settings.SnapshotEnabled) ?? string.Empty;
             }
 
             _state.SetStatus(_server.Address, error);

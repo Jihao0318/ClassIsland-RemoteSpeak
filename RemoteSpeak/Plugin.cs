@@ -1,4 +1,5 @@
 using System.IO;
+using Avalonia.Threading;
 using ClassIsland.Core.Abstractions;
 using ClassIsland.Core.Attributes;
 using ClassIsland.Core.Extensions.Registry;
@@ -31,7 +32,46 @@ public class Plugin : PluginBase
         ConfigPath = Path.Combine(PluginConfigFolder, "settings.json");
         Settings = ConfigureFileHelper.LoadConfig<Settings>(ConfigPath);
         Settings.FixUp();
-        Settings.PropertyChanged += (_, _) => ConfigureFileHelper.SaveConfig(ConfigPath, Settings);
+        Settings.PropertyChanged += (_, _) => SaveSettings();
+
+        // Token 列表内部的变化不会触发 Settings.PropertyChanged，
+        // 集合增删和每条的权限/统计变化都要自己接住再落盘。
+        var hookedTokens = new HashSet<ApiToken>();
+        foreach (var token in Settings.Tokens)
+        {
+            HookToken(token);
+        }
+
+        Settings.Tokens.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems != null)
+            {
+                foreach (ApiToken token in e.NewItems)
+                {
+                    HookToken(token);
+                }
+            }
+
+            SaveSettings();
+        };
+
+        void HookToken(ApiToken token)
+        {
+            if (!hookedTokens.Add(token))
+            {
+                return;
+            }
+
+            token.PropertyChanged += (_, _) => SaveSettings();
+            // 请求在后台线程命中，统计回 UI 线程再刷新界面并落盘。
+            token.UsageUpdated = () => Dispatcher.UIThread.Post(() =>
+            {
+                token.RaiseUsageChanged();
+                SaveSettings();
+            });
+        }
+
+        void SaveSettings() => ConfigureFileHelper.SaveConfig(ConfigPath, Settings);
 
         LogPath = Path.Combine(PluginConfigFolder, "error.log");
         var log = new RequestLog(LogPath);

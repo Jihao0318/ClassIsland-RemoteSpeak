@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using RemoteSpeak.Models;
 
 namespace RemoteSpeak.Services;
 
@@ -29,7 +30,7 @@ public sealed class RemoteSpeakServer : IDisposable
     private HttpListener? _listener;
     private CancellationTokenSource? _supervisorCts;
     private int _port;
-    private string _token = string.Empty;
+    private IReadOnlyList<ApiToken> _tokens = [];
     private bool _wantRunning;
     private bool _snapshotEnabled;
 
@@ -66,17 +67,17 @@ public sealed class RemoteSpeakServer : IDisposable
     public event EventHandler? Changed;
 
     /// <summary>
-    /// 按给定端口和 Token 起服务。返回 null 表示当场就绑上了；
+    /// 按给定端口和 Token 列表起服务。返回 null 表示当场就绑上了；
     /// 返回失败原因时后台仍会按退避继续重试，直到绑上或者被 <see cref="Stop"/>。
     /// </summary>
-    public string? Start(int port, string token, bool snapshotEnabled = false)
+    public string? Start(int port, IReadOnlyList<ApiToken> tokens, bool snapshotEnabled = false)
     {
         Stop();
 
         lock (_sync)
         {
             _port = port;
-            _token = token.Trim();
+            _tokens = tokens;
             _snapshotEnabled = snapshotEnabled;
             _wantRunning = true;
             _lastIssue = string.Empty;
@@ -89,6 +90,15 @@ public sealed class RemoteSpeakServer : IDisposable
             return LastError.Length > 0 ? LastError : null;
         }
     }
+
+    /// <summary>兼容只传一个 token 的老调用方（ServerCheck 用）。</summary>
+    public string? Start(int port, string token, bool snapshotEnabled = false) =>
+        Start(
+            port,
+            token.Length == 0
+                ? []
+                : [new ApiToken { Name = "默认", Value = token.Trim() }],
+            snapshotEnabled);
 
     public void Stop()
     {
@@ -336,9 +346,14 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
-            if (!IsTokenAccepted(request))
+            var speakToken = CheckToken(request, needSpeak: true, needSnapshot: false);
+            if (!speakToken.Accepted)
             {
-                await FailAsync(request, response, HttpStatusCode.Unauthorized, "Token 不对").ConfigureAwait(false);
+                await FailAsync(
+                    request,
+                    response,
+                    speakToken.Forbidden ? HttpStatusCode.Forbidden : HttpStatusCode.Unauthorized,
+                    speakToken.Forbidden ? "这个 Token 没有播报权限" : "Token 不对").ConfigureAwait(false);
                 return;
             }
 
@@ -376,8 +391,10 @@ public sealed class RemoteSpeakServer : IDisposable
             // 受理成功也留一行，回看才知道网页到底递进来了什么；正文只留前 20 字。
             // 先记再回响应：真正的成功是提供方接下了，回写只是管道。
             var times = payload.Repeat == null ? "" : $" ×{payload.Repeat}";
+            var who = speakToken.Token == null ? "" : $" · token={speakToken.Token.Name}";
+            speakToken.Token?.RecordUse();
             _log.AddRequest("HTTP 202",
-                $"POST /speak · {payload.Text.Length} 字{times} · {RequestLog.Summarize(payload.Text)}");
+                $"POST /speak{who} · {payload.Text.Length} 字{times} · {RequestLog.Summarize(payload.Text)}");
             await WriteAsync(response, HttpStatusCode.Accepted, "{\"ok\":true}").ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -424,9 +441,14 @@ public sealed class RemoteSpeakServer : IDisposable
             return;
         }
 
-        if (!IsTokenAccepted(request))
+        var snapshotToken = CheckToken(request, needSpeak: false, needSnapshot: true);
+        if (!snapshotToken.Accepted)
         {
-            await FailAsync(request, response, HttpStatusCode.Unauthorized, "Token 不对").ConfigureAwait(false);
+            await FailAsync(
+                request,
+                response,
+                snapshotToken.Forbidden ? HttpStatusCode.Forbidden : HttpStatusCode.Unauthorized,
+                snapshotToken.Forbidden ? "这个 Token 没有取景权限" : "Token 不对").ConfigureAwait(false);
             return;
         }
 
@@ -458,8 +480,10 @@ public sealed class RemoteSpeakServer : IDisposable
         }
 
         var seconds = Stopwatch.GetElapsedTime(startedAt, Stopwatch.GetTimestamp()).TotalSeconds;
+        var who = snapshotToken.Token == null ? "" : $" · token={snapshotToken.Token.Name}";
+        snapshotToken.Token?.RecordUse();
         _log.AddRequest("HTTP 200",
-            $"GET /snapshot · {frame.DeviceName} · {frame.Width}×{frame.Height} · {frame.Jpeg.Length / 1024} KB · {seconds:0.0} 秒");
+            $"GET /snapshot{who} · {frame.DeviceName} · {frame.Width}×{frame.Height} · {frame.Jpeg.Length / 1024} KB · {seconds:0.0} 秒");
         response.StatusCode = (int)HttpStatusCode.OK;
         response.ContentType = "image/jpeg";
         response.ContentLength64 = frame.Jpeg.Length;
@@ -493,14 +517,34 @@ public sealed class RemoteSpeakServer : IDisposable
         await WriteAsync(response, status, ErrorJson(reason)).ConfigureAwait(false);
     }
 
-    private bool IsTokenAccepted(HttpListenerRequest request)
+    /// <summary>一次校验的结果：命中的 token、是否放行、是不是权限不够。</summary>
+    private sealed record TokenCheck(ApiToken? Token, bool Accepted, bool Forbidden);
+
+    /// <summary>
+    /// 没启用任何 token 时整台本机都不校验（和旧版「Token 留空」一致）；
+    /// 一旦有启用的 token，就必须带对，而且得有所需权限。
+    /// </summary>
+    private TokenCheck CheckToken(HttpListenerRequest request, bool needSpeak, bool needSnapshot)
     {
-        if (_token.Length == 0)
+        var active = _tokens.Where(t => t.Enabled && t.Value.Length > 0).ToList();
+        if (active.Count == 0)
         {
-            return true;
+            return new TokenCheck(null, true, false);
         }
 
-        return string.Equals(request.Headers["X-Token"], _token, StringComparison.Ordinal);
+        var presented = request.Headers["X-Token"] ?? "";
+        var token = active.FirstOrDefault(t => string.Equals(t.Value, presented, StringComparison.Ordinal));
+        if (token == null)
+        {
+            return new TokenCheck(null, false, false);
+        }
+
+        if ((needSpeak && !token.AllowSpeak) || (needSnapshot && !token.AllowSnapshot))
+        {
+            return new TokenCheck(token, false, true);
+        }
+
+        return new TokenCheck(token, true, false);
     }
 
     /// <summary>读 body 并解析；body 超限返回 null，格式不对或空白按老规矩交空文本。</summary>

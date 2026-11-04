@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace RemoteSpeak.Models;
@@ -14,9 +15,13 @@ public partial class Settings : ObservableObject
     [ObservableProperty]
     private int _httpPort = 8765;
 
-    /// <summary>访问 Token；留空则不校验请求头。</summary>
+    /// <summary>旧版单 Token 字段，只用于把老配置迁移到 <see cref="Tokens"/>。</summary>
     [ObservableProperty]
     private string _httpToken = "";
+
+    /// <summary>访问 Token 列表：每条有自己的名称、权限和使用统计。</summary>
+    [ObservableProperty]
+    private ObservableCollection<ApiToken> _tokens = new();
 
     /// <summary>遮罩上显示的短语。</summary>
     [ObservableProperty]
@@ -103,6 +108,7 @@ public partial class Settings : ObservableObject
     {
         MaskText = string.IsNullOrWhiteSpace(MaskText) ? "远程播报" : MaskText.Trim();
         HttpToken = HttpToken?.Trim() ?? "";
+        MigrateTokens();
         HttpPort = HttpPort is >= 1 and <= 65535 ? HttpPort : 8765;
         WordsPerSecond = WordsPerSecond > 0.5 ? WordsPerSecond : 4.5;
         MaskDurationSeconds = MaskDurationSeconds is >= 1 and <= 30 ? MaskDurationSeconds : 2;
@@ -110,6 +116,36 @@ public partial class Settings : ObservableObject
         SnapshotDeviceId = SnapshotDeviceId?.Trim() ?? "";
         SnapshotResolution = Array.IndexOf(SnapshotResolutions, SnapshotResolution) >= 0 ? SnapshotResolution : 720;
         RepeatTimes = Math.Clamp(RepeatTimes, 1, 5);
+    }
+
+    /// <summary>
+    /// 老配置只有一个 HttpToken：迁移成一条「默认」token，两个权限全开，
+    /// 老调用方不用改请求就能继续用。
+    /// </summary>
+    private void MigrateTokens()
+    {
+        Tokens ??= new ObservableCollection<ApiToken>();
+
+        if (Tokens.Count == 0 && HttpToken.Length > 0)
+        {
+            Tokens.Add(new ApiToken
+            {
+                Name = "默认",
+                Value = HttpToken,
+            });
+        }
+
+        HttpToken = "";
+
+        foreach (var token in Tokens)
+        {
+            token.Name = string.IsNullOrWhiteSpace(token.Name) ? "未命名" : token.Name.Trim();
+            token.Value = token.Value?.Trim() ?? "";
+            if (token.Id.Length == 0)
+            {
+                token.Id = Guid.NewGuid().ToString("N");
+            }
+        }
     }
 
     /// <summary>

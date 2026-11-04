@@ -46,6 +46,7 @@ dotnet run -c Release --project ServerCheck
 RemoteSpeak/                          插件本体（.NET 8 + ClassIsland.PluginSdk 2.1.0.1）
   Plugin.cs                           入口：注册设置、提醒提供方、后台服务、设置页
   Models/Settings.cs                  设置项、取值钳制与停留时长估算
+  Models/ApiToken.cs                  访问 Token：名称、权限、使用统计
   Services/RemoteSpeakServer.cs       HttpListener、协议处理、自愈重绑
   Services/RemoteSpeakHostService.cs  挂到宿主生命周期，改设置即时生效
   Services/RemoteSpeakProvider.cs     提醒提供方：打断式发送
@@ -73,8 +74,8 @@ Icon.svg                              README 头图与图标的矢量源
 发版前把 `RemoteSpeak/manifest.yml` 与 `RemoteSpeak/RemoteSpeak.csproj` 里的版本改成同一个四段版本号，再打 tag：
 
 ```bash
-git tag v1.2.0.0
-git push origin v1.2.0.0
+git tag v1.3.0.0
+git push origin v1.3.0.0
 ```
 
 tag 与两处版本不一致时工作流会直接失败，不会发出一个版本号对不上的包。`checksums.md` 是上架 ClassIsland 插件市场用的 MD5 校验信息，从 Release 本地安装不读它。

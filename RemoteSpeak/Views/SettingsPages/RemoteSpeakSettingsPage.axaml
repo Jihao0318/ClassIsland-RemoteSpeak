@@ -41,16 +41,38 @@
                                    FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Text="访问 Token" Width="72" VerticalAlignment="Center" />
-                        <TextBox Width="260"
-                                 Text="{Binding Settings.HttpToken, Mode=TwoWay}"
-                                 Watermark="留空则不校验" />
-                        <Button Content="生成" Click="ButtonGenerateToken_OnClick" />
-                        <Button Content="清空" Click="ButtonClearToken_OnClick" />
-                    </StackPanel>
-                    <TextBlock Text="填了 Token 之后，请求必须带 X-Token 请求头；留空表示任何本机程序都能触发朗读。"
+                    <TextBlock Text="访问 Token" Width="72" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                    <TextBlock Text="留空表示不校验；每条 Token 可以单独控制能不能播报、能不能取景。"
                                FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Settings.Tokens}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Spacing="8" Margin="0,8,0,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBox Width="160"
+                                                 Text="{Binding Name, Mode=TwoWay}"
+                                                 Watermark="名称，例如 互动页" />
+                                        <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                  Content="启用" VerticalAlignment="Center" />
+                                        <Button Content="复制" Click="ButtonCopyToken_OnClick" />
+                                        <Button Content="删除" Click="ButtonDeleteToken_OnClick" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Value}" FontFamily="Consolas,monospace"
+                                               FontSize="12" TextWrapping="Wrap" Opacity="0.7" />
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <CheckBox IsChecked="{Binding AllowSpeak, Mode=TwoWay}"
+                                                  Content="允许播报" VerticalAlignment="Center" />
+                                        <CheckBox IsChecked="{Binding AllowSnapshot, Mode=TwoWay}"
+                                                  Content="允许取景" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding UsageText}" FontSize="12"
+                                                   Opacity="0.6" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <Separator />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="新增 Token" Click="ButtonAddToken_OnClick" HorizontalAlignment="Left" />
 
                     <Separator Margin="0,4" />
 

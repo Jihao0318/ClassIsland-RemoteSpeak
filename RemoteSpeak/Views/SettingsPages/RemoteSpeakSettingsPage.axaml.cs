@@ -75,14 +75,38 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
         ErrorTextBlock.IsVisible = State.LastError.Length > 0;
     }
 
-    private void ButtonGenerateToken_OnClick(object? sender, RoutedEventArgs e)
+    private void ButtonAddToken_OnClick(object? sender, RoutedEventArgs e)
     {
-        Settings.HttpToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+        Settings.Tokens.Add(new ApiToken
+        {
+            Name = $"Token {Settings.Tokens.Count + 1}",
+            Value = ApiToken.NewValue(),
+        });
     }
 
-    private void ButtonClearToken_OnClick(object? sender, RoutedEventArgs e)
+    private void ButtonDeleteToken_OnClick(object? sender, RoutedEventArgs e)
     {
-        Settings.HttpToken = "";
+        if (sender is Button { DataContext: ApiToken token })
+        {
+            Settings.Tokens.Remove(token);
+        }
+    }
+
+    private void ButtonCopyToken_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: ApiToken token })
+        {
+            _ = CopyAsync(token.Value);
+        }
+    }
+
+    private async Task CopyAsync(string text)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard != null)
+        {
+            await clipboard.SetTextAsync(text);
+        }
     }
 
     private void RefreshLog()
@@ -270,6 +294,7 @@ public partial class RemoteSpeakSettingsPage : SettingsPageBase
             return;
         }
 
-        await clipboard.SetTextAsync(CallExample.Build(Settings.HttpPort, Settings.HttpToken, Settings.SnapshotEnabled));
+        var token = Settings.Tokens.FirstOrDefault(t => t.Enabled && t.Value.Length > 0)?.Value ?? "";
+        await clipboard.SetTextAsync(CallExample.Build(Settings.HttpPort, token, Settings.SnapshotEnabled));
     }
 }
