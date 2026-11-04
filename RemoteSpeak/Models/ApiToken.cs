@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace RemoteSpeak.Models;
@@ -52,11 +53,13 @@ public sealed partial class ApiToken : ObservableObject
     public string UsageDate { get; set; } = "";
 
     /// <summary>设置页那一行说明：播报和取景分开数，最后什么时候用过。</summary>
+    [JsonIgnore]
     public string UsageText => LastUsedAt == null
         ? "还没用过"
         : $"播报 {TodaySpeakCount} · 取景 {TodaySnapshotCount} · 最近 {LastUsedAt:MM-dd HH:mm}";
 
     /// <summary>由插件入口在 UI 线程上接过去，负责刷新界面并保存统计。</summary>
+    [JsonIgnore]
     public Action? UsageUpdated { get; set; }
 
     /// <summary>请求命中时记一笔。跨天自动把两类今日次数都清零。</summary>
