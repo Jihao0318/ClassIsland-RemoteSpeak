@@ -388,8 +388,11 @@ public sealed class RemoteSpeakServer : IDisposable
                 return;
             }
 
+            var allowSpeak = speakToken.Token?.AllowSpeak ?? true;
+            // mode=notify 一律只通知；mode=speak 但这条 Token 没朗读权限时也回退成通知。
+            var notifyOnly = payload.Mode == SpeakRequest.ModeNotify || !allowSpeak;
             var options = new SpeakOptions(
-                NotifyOnly: !(speakToken.Token?.AllowSpeak ?? true),
+                NotifyOnly: notifyOnly,
                 TokenName: speakToken.Token?.Name ?? "");
             if (!await _onText(payload.Text, payload.Repeat, options).ConfigureAwait(false))
             {

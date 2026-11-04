@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.TipsAndUpdates
 import androidx.compose.material.icons.rounded.VideocamOff
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -160,7 +161,7 @@ fun BroadcastPagerMiuix(
                                     SnapshotBlock(state, actions)
                                 }
                                 InputBlock(state, actions, focusRequester)
-                                SendBlock(state, actions, state.permissions.speak)
+                                SendBlock(state, actions)
                             }
                         }
                     }
@@ -303,7 +304,7 @@ private fun InputBlock(
 }
 
 @Composable
-private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions, canSpeak: Boolean) {
+private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions) {
     var releaseTooEarly by rememberSaveable { mutableStateOf(false) }
     val confirmTitle = stringResource(R.string.broadcast_confirm_title)
     val confirmLabel = stringResource(R.string.confirm)
@@ -338,13 +339,38 @@ private fun SendBlock(state: BroadcastUiState, actions: BroadcastActions, canSpe
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // 两样权限都有时才让用户自己选这次要不要出声。
+        if (state.permissions.speak && state.permissions.notify) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Checkbox(
+                    checked = state.sendMode == SendMode.Speak,
+                    onCheckedChange = { actions.onSendModeChange(it == true) },
+                )
+                Text(
+                    text = stringResource(R.string.broadcast_mode_speak),
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.broadcast_mode_hint),
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
         SendButton(
             sending = state.sendStatus is SendStatus.Sending,
             longPress = state.sendsOnLongPress,
             onSend = ::requestSend,
             onShortTap = { releaseTooEarly = true },
         )
-        if (!canSpeak) {
+        if (!state.permissions.speak) {
             Text(
                 text = stringResource(R.string.broadcast_notify_only_hint),
                 fontSize = MiuixTheme.textStyles.body2.fontSize,

@@ -55,12 +55,19 @@ fun connectionHeadline(state: ServerStatusUiState): String = stringResource(
 
 private data class StatusPalette(val container: Color, val icon: Color, val text: Color)
 
-private val PlainText = Color(0xFF111111)
-
 @Composable
 private fun statusPalette(status: ConnectionStatus): StatusPalette? = when (status) {
-    ConnectionStatus.ONLINE -> StatusPalette(Color(0xFFDFFAE4), Color(0xFF36D167), PlainText)
-    ConnectionStatus.OFFLINE -> StatusPalette(Color(0xFFF8E2E2), Color(0xFFF72727), PlainText)
+    // 用主题容器色，Monet 取色时才会跟着壁纸变；写死绿色会让动态取色失效。
+    ConnectionStatus.ONLINE -> StatusPalette(
+        container = colorScheme.secondaryContainer,
+        icon = colorScheme.primary,
+        text = colorScheme.onSecondaryContainer,
+    )
+    ConnectionStatus.OFFLINE -> StatusPalette(
+        container = colorScheme.errorContainer,
+        icon = colorScheme.error,
+        text = colorScheme.onErrorContainer,
+    )
     else -> null
 }
 

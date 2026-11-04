@@ -85,9 +85,10 @@ object BroadcastApi {
     fun withToken(builder: Request.Builder, token: String): Request.Builder =
         if (token.isBlank()) builder else builder.header("X-Token", token)
 
-    fun speakBody(text: String, repeat: Int): String {
+    fun speakBody(text: String, repeat: Int, mode: String? = null): String {
         val clamped = repeat.coerceIn(MIN_REPEAT, MAX_REPEAT)
-        return "{\"text\":${jsonString(text)},\"repeat\":$clamped}"
+        val base = "{\"text\":${jsonString(text)},\"repeat\":$clamped"
+        return if (mode == null) "$base}" else "$base,\"mode\":\"$mode\"}"
     }
 
     private fun jsonString(value: String): String {
@@ -175,7 +176,7 @@ object BroadcastApi {
     private fun uncachedClient(): OkHttpClient =
         templateApp.okhttpClient.newBuilder().cache(null).build()
 
-    fun speak(baseUrl: String, token: String, text: String, repeat: Int): BroadcastOutcome<Int> {
+    fun speak(baseUrl: String, token: String, text: String, repeat: Int, mode: String? = null): BroadcastOutcome<Int> {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return BroadcastOutcome.Failed(BroadcastFailure.INVALID_URL)
         val url = endpointUrl(baseUrl, ENDPOINT_SPEAK) ?: return BroadcastOutcome.Failed(BroadcastFailure.INVALID_URL)
@@ -183,7 +184,7 @@ object BroadcastApi {
             Request.Builder()
                 .url(url)
                 .header("Cache-Control", "no-store")
-                .post(speakBody(trimmed, repeat).toRequestBody(JSON_MEDIA_TYPE)),
+                .post(speakBody(trimmed, repeat, mode).toRequestBody(JSON_MEDIA_TYPE)),
             token,
         ).build()
         val clamped = repeat.coerceIn(MIN_REPEAT, MAX_REPEAT)

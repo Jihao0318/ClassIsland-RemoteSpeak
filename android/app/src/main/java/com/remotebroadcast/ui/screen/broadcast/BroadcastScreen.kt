@@ -52,6 +52,7 @@ fun BroadcastPager(
         onTextChanged = viewModel::onTextChanged,
         onSend = viewModel::send,
         onRepeatChange = { index -> viewModel.setRepeat(BroadcastApi.MIN_REPEAT + index) },
+        onSendModeChange = viewModel::setSendMode,
         onSkipGuide = viewModel::skipGuide,
         onSaveSetup = viewModel::saveSetup,
         onSnapshotClick = viewModel::loadSnapshot,

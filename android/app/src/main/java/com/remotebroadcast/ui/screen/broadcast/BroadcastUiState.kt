@@ -8,6 +8,17 @@ import com.remotebroadcast.data.remote.Permissions
 
 const val SNAPSHOT_AUTO_REFRESH_MILLIS = 2000L
 
+/** 这次请求是想出声，还是只弹通知。 */
+enum class SendMode(val apiValue: String) {
+    Speak("speak"),
+    Notify("notify");
+
+    companion object {
+        fun fromValue(value: String?): SendMode =
+            if (value == Notify.apiValue) Notify else Speak
+    }
+}
+
 enum class BroadcastTriggerMode(val value: Int) {
     DIRECT(0),
     CONFIRM(1),
@@ -47,6 +58,7 @@ data class BroadcastUiState(
     val token: String = "",
     val repeat: Int = BroadcastApi.MIN_REPEAT,
     val triggerMode: BroadcastTriggerMode = BroadcastTriggerMode.CONFIRM,
+    val sendMode: SendMode = SendMode.Speak,
     val autoRefreshSnapshot: Boolean = false,
     val setupDone: Boolean = false,
     val permissions: Permissions = Permissions(),
@@ -85,6 +97,7 @@ data class BroadcastActions(
     val onTextChanged: (String) -> Unit,
     val onSend: () -> Unit,
     val onRepeatChange: (Int) -> Unit,
+    val onSendModeChange: (Boolean) -> Unit,
     val onSkipGuide: () -> Unit,
     val onSaveSetup: (String, String) -> Unit,
     val onSnapshotClick: () -> Unit,

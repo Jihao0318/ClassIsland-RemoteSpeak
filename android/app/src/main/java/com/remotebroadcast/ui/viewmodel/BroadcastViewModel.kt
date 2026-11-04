@@ -21,6 +21,7 @@ import com.remotebroadcast.data.repository.SettingsRepository
 import com.remotebroadcast.data.repository.SettingsRepositoryImpl
 import com.remotebroadcast.ui.screen.broadcast.BroadcastTriggerMode
 import com.remotebroadcast.ui.screen.broadcast.BroadcastUiState
+import com.remotebroadcast.ui.screen.broadcast.SendMode
 import com.remotebroadcast.ui.screen.broadcast.SendStatus
 import com.remotebroadcast.ui.screen.broadcast.SnapshotStatus
 import com.remotebroadcast.ui.screen.broadcast.SnapshotView
@@ -110,6 +111,10 @@ class BroadcastViewModel(
         _uiState.update { it.copy(setupDone = true) }
     }
 
+    fun setSendMode(speak: Boolean) {
+        _uiState.update { it.copy(sendMode = if (speak) SendMode.Speak else SendMode.Notify) }
+    }
+
     fun setRepeat(value: Int) {
         repo.broadcastRepeat = value
         _uiState.update { it.copy(repeat = repo.broadcastRepeat) }
@@ -135,7 +140,7 @@ class BroadcastViewModel(
         sendJob = viewModelScope.launch {
             showStatus(SendStatus.Sending)
             val outcome = withContext(Dispatchers.IO) {
-                BroadcastApi.speak(state.baseUrl, state.token, state.text, state.repeat)
+                BroadcastApi.speak(state.baseUrl, state.token, state.text, state.repeat, state.sendMode.apiValue)
             }
             when (outcome) {
                 is BroadcastOutcome.Success -> showStatus(SendStatus.Sent(outcome.value))
